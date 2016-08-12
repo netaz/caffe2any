@@ -71,48 +71,16 @@ def update_blobs_size(tplgy, node):
 	if node.type == 'Convolution':
 		assert len(in_edges)==1 and len(out_edges)==1, node.name
 		if in_edges[0].blob.shape != None:
-			out_edges[0].blob.shape = in_edges[0].blob.shape
-
-			#printer = ConsolePrinter()
-			#printer.print_layer(node.layer)
-			
-			param = node.layer.convolution_param
-			kernel_size = param.kernel_size
-			stride = param.stride
-			pad = param.pad
-			num_output = param.num_output			
-
-			out_edges[0].blob.shape[1] = num_output
-			# ofmh = (ifmh - kernel_size + 2*padding) / stride + 1
-			ifmh = in_edges[0].blob.shape[2]
-			ofmh = (ifmh - kernel_size + 2*pad) / stride + 1
-			print (str(ifmh) + '--> ' + str(ofmh))
-			out_edges[0].blob.shape[2] = ofmh
-			out_edges[0].blob.shape[3] = ofmh
-
+			out_edges[0].blob.shape = node.transform(in_edges[0].blob.shape)
 	elif node.type == 'ReLU':
 		assert len(in_edges)==1, node.name
-		#print(in_edges[0].blob.shape)
 		if in_edges[0].blob.shape != None:
 			for edge in out_edges:
 				edge.blob.shape = in_edges[0].blob.shape
 	elif node.type == 'Pooling':
 		assert len(in_edges)==1 and len(out_edges)==1, node.name
-		printer = ConsolePrinter()
-		printer.print_layer(node.layer)
 		if in_edges[0].blob.shape != None:
-			out_edges[0].blob.shape = in_edges[0].blob.shape
-			param = node.layer.pooling_param
-			kernel_size = param.kernel_size
-			stride = param.stride
-			pad = param.pad
-
-			ifmh = in_edges[0].blob.shape[2]
-			ofmh = (ifmh - kernel_size + 2*pad) / stride + 1
-			print (str(ifmh) + '--> ' + str(ofmh))
-			out_edges[0].blob.shape[2] = ofmh
-			out_edges[0].blob.shape[3] = ofmh
-
+			out_edges[0].blob.shape = node.transform(in_edges[0].blob.shape)
 	elif node.type == 'ROIPooling':
 		assert len(in_edges)==2 and len(out_edges)==1, node.name
 		#print(in_edges[0].blob.shape)
@@ -149,14 +117,13 @@ def main():
 		print ("Could not open file ", sys.argv[1])
 
 	tplgy = topology.populate(net)
+	# calculate BLOBs sizes
+	tplgy.traverse(lambda node: update_blobs_size(tplgy, node))
 
 	if args.format == 'console':
 		printer = ConsolePrinter()
 	else:
 		printer = CsvPrinter(args.infile + '.csv') 
-
-	# calculate BLOBs sizes
-	tplgy.traverse(lambda node: update_blobs_size(tplgy, node))
 
 	if args.display != None:
 		for disp_opt in args.display.split(','):
@@ -172,8 +139,7 @@ def main():
 				for output in outputs:
 					print('\t' + output)
 			elif disp_opt == 'bfs':
-				tplgy.traverse(lambda node: print(node.name), 
-					 		   lambda edge: print('\t' + str(edge)))
+				printer.print_bfs(tplgy)
 			else:
 				exit ("Error: invalid display option")
 
