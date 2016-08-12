@@ -68,7 +68,7 @@ def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('infile', help='input prototxt file')
 	parser.add_argument('-f', '--format', help='output format (csv, console)', default='console')
-	parser.add_argument('-d', '--display', type=str, help='display catalog, unique, output')
+	parser.add_argument('-d', '--display', type=str, help='display catalog, unique, output, bfs')
 	args = parser.parse_args()
 
 	net = caffe_pb2.NetParameter()
