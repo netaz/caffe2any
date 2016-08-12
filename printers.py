@@ -1,3 +1,9 @@
+"""
+Classes that print to different media
+"""
+
+# See - http://stackoverflow.com/questions/2970858/why-doesnt-print-work-in-a-lambda
+from __future__ import print_function
 from collections import Counter
 
 pooling_type = { 0:'MAX', 1:'AVG', 2:'STOCHASTIC'}
@@ -73,8 +79,7 @@ class ConsolePrinter(BasePrinter):
 	    print('\t%-20s%-3s' % print_fn(layer))
 
 	def print_catalog(self, tplgy):
-		print "Catalog:"
-		print "--------"
+		print ("Catalog:\n--------")
 		node_types_cnt = self.count_nodes(tplgy)
 		for type in node_types_cnt:
 			print('\t%-20s%-3i' % (type, node_types_cnt[type] ))
@@ -84,13 +89,16 @@ class ConsolePrinter(BasePrinter):
 			self.print_layer(layer)
 
 	def print_unique_all(self, unique_layers_dict):
-		print "Unique:"
-		print "--------"
+		print ("Unique:\n--------")
 		for type_name in unique_layers_dict:
 			self.print_unique(unique_layers_dict[type_name])
 
+	def print_bfs(self, tplgy):
+		tplgy.traverse(lambda node: print(str(node)), 
+			 		   lambda edge: print('\t' + str(edge)))
+
 class CsvPrinter(BasePrinter):
-	"""A simple console printer"""
+	"""A CSV file printer"""
 
 	def __init__(self, fname):
 		self.file = open(fname, "wt")
@@ -137,6 +145,24 @@ class CsvPrinter(BasePrinter):
 			self.print_layer(layer)
 
 	def print_unique_all(self, unique_layers_dict):
+		unique_nodes = {}
+		tplgy.traverse(lambda node: add_unique(node.layer, unique_nodes))
+
 		self.file.write('Type, Configuration\n')
 		for type_name in unique_layers_dict:
 			self.print_unique(unique_layers_dict[type_name])
+
+	def print_bfs(self, tplgy):
+		self.file.write('Node, Type, Details,OFMx,OFMy,OFMz\n')
+
+		tplgy.traverse(None, 
+			 		   lambda edge: self.file.write((edge.src_node.name if edge.src_node else '') + ',' +
+			 		   								(edge.src_node.type if edge.src_node else '') +  ',' +
+			 		   								',' +
+			 		   								(str(edge.blob.shape[1]) if edge.blob.shape else '') + ',' +
+			 		   								(str(edge.blob.shape[2]) if edge.blob.shape else '')+ ',' +
+			 		   								(str(edge.blob.shape[3]) if edge.blob.shape else '') + ',' +
+			 		   								'\n'))
+
+#		        return ('Edge [' + str(self.blob) +  ': ' + (self.src_node.name if self.src_node else 'None') + ' ==> ' + 
+ #               (self.dst_node.name if self.dst_node else 'None') +  ']')
