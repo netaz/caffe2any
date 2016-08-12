@@ -13,12 +13,20 @@ summary
  -l [deconv|conv|]
 """
 
+# See - http://stackoverflow.com/questions/2970858/why-doesnt-print-work-in-a-lambda
+from __future__ import print_function
 import caffe_pb2
 import sys
 import argparse
 from google.protobuf import text_format
 from printers import ConsolePrinter, CsvPrinter
+from collections import deque, Counter
+import topology
 
+DEBUG = False
+
+def debug(str):
+    if DEBUG: print (str)
 
 def is_equal_conv(layer1, layer2):
 	param1 = layer1.convolution_param
@@ -56,12 +64,11 @@ def add_unique(layer, unique_layers):
 	if is_unique(layer, unique_layers[layer.type]):
 		unique_layers[layer.type].append(layer)
 
-
 def main():
-
 	parser = argparse.ArgumentParser()
 	parser.add_argument('infile', help='input prototxt file')
 	parser.add_argument('-f', '--format', help='output format (csv, console)', default='console')
+	parser.add_argument('-d', '--display', type=str, help='display catalog, unique, output')
 	args = parser.parse_args()
 
 	net = caffe_pb2.NetParameter()
@@ -69,38 +76,37 @@ def main():
 	# Read a Caffe prototxt file
 	try:
 		f = open(sys.argv[1], "rb")
-	  	text_format.Parse(f.read(), net)
-	  	f.close()
+		text_format.Parse(f.read(), net)
+		f.close()
 	except IOError:
-	  	print "Could not open file ", sys.argv[1]
+		print ("Could not open file ", sys.argv[1])
 
-	layer_types = {}
-	unique_layers = {}
-	
-	for layer in net.layer:
-		#print layer.name
-		if layer.type == "Convolution":
-			add_unique(layer, unique_layers)
-
-		if layer.type == "Pooling":
-			add_unique(layer, unique_layers)
-
-		if layer.type == "LRN":
-			add_unique(layer, unique_layers)
-
-		if layer_types.get(layer.type) == None:
-			layer_types[layer.type] = 1
-		else:
-			layer_types[layer.type] = layer_types[layer.type] + 1
+	tplgy = topology.populate(net)
 
 	if args.format == 'console':
 		printer = ConsolePrinter()
 	else:
 		printer = CsvPrinter(args.infile + '.csv') 
-	printer.print_summary(layer_types)
-	#print_unique(unique_layers["Pooling"])
-	#print_unique(unique_layers["Convolution"])
-	printer.print_unique_all(unique_layers)
+
+	if args.display != None:
+		for disp_opt in args.display.split(','):
+			if disp_opt == 'catalog':
+				printer.print_catalog(tplgy)
+			elif disp_opt == 'unique':
+				unique_nodes = {}
+				tplgy.traverse(lambda node: add_unique(node.layer, unique_nodes))
+				printer.print_unique_all(unique_nodes)
+			elif disp_opt == 'output':
+				print("outputs:")
+				outputs = tplgy.find_output_blobs()
+				for output in outputs:
+					print('\t' + output)
+			elif disp_opt == 'bfs':
+				tplgy.traverse(lambda node: print(node.name), 
+					 		   lambda edge: print('\t' + str(edge)))
+
+			else:
+				exit ("Error: invalid display option")
 
 if __name__ == '__main__':
-    main()
+	main()

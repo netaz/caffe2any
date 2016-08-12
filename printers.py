@@ -1,3 +1,5 @@
+from collections import Counter
+
 pooling_type = { 0:'MAX', 1:'AVG', 2:'STOCHASTIC'}
 lrn_type = { 0:'ACROSS_CHANNELS', 1:'WITHIN_CHANNEL'}
 
@@ -32,27 +34,34 @@ class BasePrinter:
 	        "LRN" : self.print_lrn,
 	    }.get(layer.type, self.print_unknown)
 
+	def count_nodes(self, tplgy):
+		node_cnt = []
+		tplgy.traverse(lambda node: node_cnt.append(node.type))
+		return Counter(node_cnt)
+
 class ConsolePrinter(BasePrinter):
 	"""A simple console printer"""
 
 	def print_pool(self, layer):
 		pool, kernel_size, stride, pad = BasePrinter.print_pool(self, layer)
-		return "[Pool="+pooling_type[pool] + '] k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad)
+		return 'Pool='+pooling_type[pool], \
+			   'k='+str(kernel_size)+'x'+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad)
 		
 	def print_deconv(self, layer):
 		return layer.convolution_param
 
 	def print_conv(self, layer):
 		kernel_size, stride, pad = BasePrinter.print_conv(self, layer)
-		return '[Conv] k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad)
+		return 'Convolution', \
+			   'k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad)
 
 	def print_lrn(self, layer):
 		local_size, alpha, beta, type = BasePrinter.print_lrn(self, layer)
-		return '[LRN='+ lrn_type[type] + '] local_size=' + str(local_size) + ' alpha=' + str(alpha) + ' beta=' + str(beta)
+		return 'LRN='+ lrn_type[type], \
+			   'local_size=' + str(local_size) + ' alpha=' + str(alpha) + ' beta=' + str(beta)
 
 	def print_unknown(self, layer):
-	#	print "UNKNOWN"
-		pass
+		return layer.type, ""
 
 	def print_layer(self, layer):
 	    print_fn =  {
@@ -61,13 +70,14 @@ class ConsolePrinter(BasePrinter):
 	        "Deconvolution" : self.print_deconv,
 	        "LRN" : self.print_lrn,
 	    }.get(layer.type, self.print_unknown)
-	    print "\t" + print_fn(layer)
+	    print('\t%-20s%-3s' % print_fn(layer))
 
-	def print_summary(self, layer_types):
-		print "Summary:"
+	def print_catalog(self, tplgy):
+		print "Catalog:"
 		print "--------"
-		for type in layer_types:
-			print "\t" + type, layer_types[type] 
+		node_types_cnt = self.count_nodes(tplgy)
+		for type in node_types_cnt:
+			print('\t%-20s%-3i' % (type, node_types_cnt[type] ))
 
 	def print_unique(self, unique_layers_list):
 		for layer in unique_layers_list:
@@ -94,7 +104,7 @@ class CsvPrinter(BasePrinter):
 
 	def print_conv(self, layer):
 		kernel_size, stride, pad = BasePrinter.print_conv(self, layer)
-		return 'Conv, k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad) 
+		return 'Convolution, k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad) 
 
 	def print_lrn(self, layer):
 		local_size, alpha, beta, type = BasePrinter.print_lrn(self, layer)
@@ -113,10 +123,12 @@ class CsvPrinter(BasePrinter):
 	    }.get(layer.type, self.print_unknown)
 	    self.file.write(print_fn(layer) + '\n')
 
-	def print_summary(self, layer_types):
+	def print_catalog(self, tplgy):
+		node_types_cnt = self.count_nodes(tplgy)
+
 		self.file.write('Type, Count\n')
-		for type in layer_types:
-			line = type + ',' + str(layer_types[type]) + '\n'
+		for type in node_types_cnt:
+			line = type + ',' + str(node_types_cnt[type]) + '\n'
 			self.file.write(line)
 		self.file.write('\n')
 
