@@ -3,10 +3,11 @@ http://www.bogotobogo.com/python/python_graph_data_structures.php
 A set of classes to model a DL topology
 
 Todo: add find_input_blobs
-
+Todo: remove Node.layer
 """
 from collections import OrderedDict, Counter
 DEBUG = False
+import copy
 
 def debug(str):
     if DEBUG: 
@@ -14,9 +15,57 @@ def debug(str):
 
 class Node:
     def __init__(self, name, type, layer):
-        self.type = type
         self.name = name
+        self.type = type
         self.layer = layer
+    def __str__(self):
+        return self.name + '(' + self.type + ')'
+
+class PoolingNode(Node):
+    def __init__(self, name, type, layer):
+        Node.__init__(self, name, type, layer)
+        param = layer.pooling_param
+        self.kernel_size = param.kernel_size
+        self.stride = param.stride
+        self.pad = param.pad
+
+    def transform(self, ifm_shape):
+        ofm_shape = copy.deepcopy(ifm_shape)
+
+        ifmh = ifm_shape[2]
+        ofmh = (ifmh - self.kernel_size + 2*self.pad) / self.stride + 1
+        ofm_shape[2] = ofmh
+        ofm_shape[3] = ofmh
+        #print (str(ifm_shape) + '--> ' + str(ofm_shape))
+        return ofm_shape
+
+class ConvolutionNode(Node):
+    def __init__(self, name, type, layer):
+        Node.__init__(self, name, type, layer)
+        param = layer.convolution_param
+        self.kernel_size = param.kernel_size
+        self.stride = param.stride
+        self.pad = param.pad
+        self.num_output = param.num_output
+
+    def transform(self, ifm_shape):
+        ofm_shape = copy.deepcopy(ifm_shape)
+        ofm_shape[1] = self.num_output
+        ifmh = ifm_shape[2]
+        ofmh = (ifmh - self.kernel_size + 2*self.pad) / self.stride + 1
+        ofm_shape[2] = ofmh
+        ofm_shape[3] = ofmh
+        #print (str(ifm_shape) + '--> ' + str(ofm_shape))
+        return ofm_shape
+
+def node_factory(name, type, layer):
+    if type == "Pooling":
+        new_node = PoolingNode(name, type, layer)
+    elif type == "Convolution":
+        new_node = ConvolutionNode(name, type, layer)
+    else:    
+        new_node = Node(name, type, layer)
+    return new_node
 
 class BLOB:
     def __init__(self, name, shape, producer):
@@ -52,7 +101,7 @@ class Topology:
         self.edges = []
 
     def add_node(self, name, type, layer):
-        new_node = Node(name, type, layer)
+        new_node = node_factory(name, type, layer)
         self.nodes[name] = new_node
         debug('created Node:' + name)
         return new_node
@@ -118,7 +167,6 @@ class Topology:
             for edge in outgoing_edges:
                 if edge_cb!=None: edge_cb(edge)
                 if edge.dst_node!=None: pending.append(edge.dst_node)
-
 
 def populate(caffe_net):
     """
