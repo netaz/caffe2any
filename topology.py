@@ -2,6 +2,8 @@
 http://www.bogotobogo.com/python/python_graph_data_structures.php
 A set of classes to model a DL topology
 
+Todo: add find_input_blobs
+
 """
 from collections import OrderedDict, Counter
 DEBUG = False
@@ -17,10 +19,17 @@ class Node:
         self.layer = layer
 
 class BLOB:
-    def __init__(self, name, tensor, producer):
+    def __init__(self, name, shape, producer):
         self.name = name
-        self.tensor = tensor
+        self.shape = shape
         self.producer = producer
+        #print (self.shape)
+
+    def __str__(self):
+        if self.shape != None:
+            return 'BLOB [' + self.name + ': shape=' + str(self.shape) + ']'
+        else:
+            return 'BLOB [' + self.name + ']'
 
 class Edge:
     def __init__(self, src_node, dst_node, blob):
@@ -29,7 +38,8 @@ class Edge:
         self.blob = blob
 
     def __str__(self):
-        return 'Edge [' + self.blob.name +  ': ' + (self.src_node.name if self.src_node else 'None') + ' ==> ' + self.dst_node.name +  ']'
+        return ('Edge [' + str(self.blob) +  ': ' + (self.src_node.name if self.src_node else 'None') + ' ==> ' + 
+                (self.dst_node.name if self.dst_node else 'None') +  ']')
 
 class Topology:
     def __init__(self):
@@ -47,15 +57,17 @@ class Topology:
         debug('created Node:' + name)
         return new_node
 
-    def add_blob(self, name, tensor, producer):
-        new_blob = BLOB(name, tensor, producer)
+    def add_blob(self, name, shape, producer):
+        new_blob = BLOB(name, shape, producer)
         self.blobs[name] = new_blob
-        debug('created BLOB:' + name)
+        debug('created:' + str(new_blob))
         return new_blob
 
     def add_edge(self, src, dst, blob):
         new_edge = Edge(src, dst, blob)
         self.edges.append(new_edge)
+        debug('created:' + str(new_edge))
+        return new_edge
 
     def get_start_node(self):
         return self.nodes.values()[0]
@@ -68,13 +80,20 @@ class Topology:
     def find_outgoing_edges(self, node):
         edges = []
         for edge in self.edges:
-            #assert edge.src_node != None , str(edge) + " has no src "
             if (edge.src_node != None) and (edge.src_node.name == node.name):
+                edges.append(edge)
+        return edges
+
+    def find_incoming_edges(self, node):
+        edges = []
+        for edge in self.edges:
+            if (edge.dst_node != None) and (edge.dst_node.name == node.name):
                 edges.append(edge)
         return edges
 
     # Output BLOBs have no consumer and therefore they don't appear on an edge.
     # We scan all blobs, checking which blobs don't appear on an edge
+    # TODO: THIS HAS A BUG (Works only the first time!!!!)
     def find_output_blobs(self):
         blobs = []
         for blob in self.blobs:
@@ -88,14 +107,18 @@ class Topology:
         return blobs
 
     def traverse(self, node_cb, edge_cb=None):
+        """
+        BFS traversal of the topology graph
+        """
         pending = [ self.get_start_node() ]
         while len(pending)>0:
             node = pending.pop()
             if node_cb != None: node_cb(node)
             outgoing_edges = self.find_outgoing_edges(node)
             for edge in outgoing_edges:
-                if edge_cb != None: edge_cb(edge)
-                pending.append(edge.dst_node)
+                if edge_cb!=None: edge_cb(edge)
+                if edge.dst_node!=None: pending.append(edge.dst_node)
+
 
 def populate(caffe_net):
     """
@@ -145,5 +168,11 @@ def populate(caffe_net):
         # Add the BLOBs produced by this layer to the topology
         for top_blob in layer.top:
             graph.add_blob(top_blob, None, producer = new_node)
+
+    # Add fake output edges
+    output_blobs = graph.find_output_blobs()
+    for blob_name in output_blobs:
+        blob = graph.find_blob(blob_name)
+        graph.add_edge(src=blob.producer, dst=None, blob=blob)  
 
     return graph

@@ -15,12 +15,12 @@ summary
 
 # See - http://stackoverflow.com/questions/2970858/why-doesnt-print-work-in-a-lambda
 from __future__ import print_function
-import caffe_pb2
 import sys
 import argparse
+from collections import deque, Counter
+import caffe_pb2
 from google.protobuf import text_format
 from printers import ConsolePrinter, CsvPrinter
-from collections import deque, Counter
 import topology
 
 DEBUG = False
@@ -64,6 +64,73 @@ def add_unique(layer, unique_layers):
 	if is_unique(layer, unique_layers[layer.type]):
 		unique_layers[layer.type].append(layer)
 
+def update_blobs_size(tplgy, node):
+#	print('updating node:' + node.name)
+	in_edges = tplgy.find_incoming_edges(node)
+	out_edges = tplgy.find_outgoing_edges(node)
+	if node.type == 'Convolution':
+		assert len(in_edges)==1 and len(out_edges)==1, node.name
+		if in_edges[0].blob.shape != None:
+			out_edges[0].blob.shape = in_edges[0].blob.shape
+
+			#printer = ConsolePrinter()
+			#printer.print_layer(node.layer)
+			
+			param = node.layer.convolution_param
+			kernel_size = param.kernel_size
+			stride = param.stride
+			pad = param.pad
+			num_output = param.num_output			
+
+			out_edges[0].blob.shape[1] = num_output
+			# ofmh = (ifmh - kernel_size + 2*padding) / stride + 1
+			ifmh = in_edges[0].blob.shape[2]
+			ofmh = (ifmh - kernel_size + 2*pad) / stride + 1
+			print (str(ifmh) + '--> ' + str(ofmh))
+			out_edges[0].blob.shape[2] = ofmh
+			out_edges[0].blob.shape[3] = ofmh
+
+	elif node.type == 'ReLU':
+		assert len(in_edges)==1, node.name
+		#print(in_edges[0].blob.shape)
+		if in_edges[0].blob.shape != None:
+			for edge in out_edges:
+				edge.blob.shape = in_edges[0].blob.shape
+	elif node.type == 'Pooling':
+		assert len(in_edges)==1 and len(out_edges)==1, node.name
+		printer = ConsolePrinter()
+		printer.print_layer(node.layer)
+		if in_edges[0].blob.shape != None:
+			out_edges[0].blob.shape = in_edges[0].blob.shape
+			param = node.layer.pooling_param
+			kernel_size = param.kernel_size
+			stride = param.stride
+			pad = param.pad
+
+			ifmh = in_edges[0].blob.shape[2]
+			ofmh = (ifmh - kernel_size + 2*pad) / stride + 1
+			print (str(ifmh) + '--> ' + str(ofmh))
+			out_edges[0].blob.shape[2] = ofmh
+			out_edges[0].blob.shape[3] = ofmh
+
+	elif node.type == 'ROIPooling':
+		assert len(in_edges)==2 and len(out_edges)==1, node.name
+		#print(in_edges[0].blob.shape)
+		if in_edges[0].blob.shape != None:
+			out_edges[0].blob.shape = in_edges[0].blob.shape
+	elif node.type == 'InnerProduct':
+		assert len(in_edges)==1 and len(out_edges)==1, node.name
+		#print(in_edges[0].blob.shape)
+		if in_edges[0].blob.shape != None:
+			out_edges[0].blob.shape = in_edges[0].blob.shape
+	elif node.type == 'Python':
+		pass # Don't know how to handle this
+	else:
+		assert len(in_edges)==1 and len(out_edges)==1, node.name
+		#print(in_edges[0].blob.shape)
+		if in_edges[0].blob.shape != None:
+			out_edges[0].blob.shape = in_edges[0].blob.shape
+
 def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('infile', help='input prototxt file')
@@ -88,6 +155,9 @@ def main():
 	else:
 		printer = CsvPrinter(args.infile + '.csv') 
 
+	# calculate BLOBs sizes
+	tplgy.traverse(lambda node: update_blobs_size(tplgy, node))
+
 	if args.display != None:
 		for disp_opt in args.display.split(','):
 			if disp_opt == 'catalog':
@@ -104,9 +174,9 @@ def main():
 			elif disp_opt == 'bfs':
 				tplgy.traverse(lambda node: print(node.name), 
 					 		   lambda edge: print('\t' + str(edge)))
-
 			else:
 				exit ("Error: invalid display option")
+
 
 if __name__ == '__main__':
 	main()
