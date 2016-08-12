@@ -11,10 +11,9 @@ def debug(str):
         print (str)
 
 class Node:
-    def __init__(self, name, type, tensor, layer):
+    def __init__(self, name, type, layer):
         self.type = type
         self.name = name
-        self.tensor = tensor #!!!!!!!!!!!!!! not required!!!!!!!!!!!!!!!!!!!!
         self.layer = layer
 
 class BLOB:
@@ -43,7 +42,7 @@ class Topology:
         self.edges = []
 
     def add_node(self, name, type, layer):
-        new_node = Node(name, type, None, layer)
+        new_node = Node(name, type, layer)
         self.nodes[name] = new_node
         debug('created Node:' + name)
         return new_node
