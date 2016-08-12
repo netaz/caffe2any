@@ -119,9 +119,8 @@ class CsvPrinter(BasePrinter):
 		return 'LRN,' + lrn_type[type] + 'local_size=' + str(local_size) + ' alpha=' + str(alpha) + ' beta=' + str(beta)
 
 	def print_unknown(self, layer):
-	#	print "UNKNOWN"
-		pass
-
+		return layer.type + ','
+		
 	def print_layer(self, layer):
 	    print_fn =  {
 	        "Pooling" : self.print_pool,
@@ -145,8 +144,8 @@ class CsvPrinter(BasePrinter):
 			self.print_layer(layer)
 
 	def print_unique_all(self, unique_layers_dict):
-		unique_nodes = {}
-		tplgy.traverse(lambda node: add_unique(node.layer, unique_nodes))
+		#unique_nodes = {}
+		#tplgy.traverse(lambda node: add_unique(node.layer, unique_nodes))
 
 		self.file.write('Type, Configuration\n')
 		for type_name in unique_layers_dict:

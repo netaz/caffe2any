@@ -78,9 +78,25 @@ def update_blobs_size(tplgy, node):
 			for edge in out_edges:
 				edge.blob.shape = in_edges[0].blob.shape
 	elif node.type == 'Pooling':
-		assert len(in_edges)==1 and len(out_edges)==1, node.name
+		assert len(in_edges)==1 and len(out_edges)>0, node.name
 		if in_edges[0].blob.shape != None:
-			out_edges[0].blob.shape = node.transform(in_edges[0].blob.shape)
+			for edge in out_edges:
+				edge.blob.shape = node.transform(in_edges[0].blob.shape)
+
+	elif node.type == 'Concat':
+		assert len(in_edges)>0 and len(out_edges)>0, node.name
+		if in_edges[0].blob.shape != None:
+			for out_edge in out_edges:
+				out_edges.blob.shape = copy.deepcopy(in_edges[0].blob.shape)
+				out_edges.blob.shape.dim[2] = 0
+			# concat on the channel dimension
+			ch_dim_size = 0
+			for in_edge in in_edges:
+				ch_dim_size += in_edge.blob.shape.dim[3]
+			for out_edge in out_edges:
+				out_edges.blob.shape.dim[2] = ch_dim_size
+
+
 	elif node.type == 'ROIPooling':
 		assert len(in_edges)==2 and len(out_edges)==1, node.name
 		#print(in_edges[0].blob.shape)
@@ -93,6 +109,13 @@ def update_blobs_size(tplgy, node):
 			out_edges[0].blob.shape = in_edges[0].blob.shape
 	elif node.type == 'Python':
 		pass # Don't know how to handle this
+	elif node.type == 'Input':
+		assert len(out_edges)==1, node.name
+		print('------------------------------')
+		print(node.name)
+		print(node.layer.input_param.shape[0].dim)
+		#tplgy.add_blob(node.name, node.layer.input_param.shape[0].dim, None)
+		
 	else:
 		assert len(in_edges)==1 and len(out_edges)==1, node.name
 		#print(in_edges[0].blob.shape)
@@ -114,7 +137,7 @@ def main():
 		text_format.Parse(f.read(), net)
 		f.close()
 	except IOError:
-		print ("Could not open file ", sys.argv[1])
+		exit("Could not open file " + sys.argv[1])
 
 	tplgy = topology.populate(net)
 	# calculate BLOBs sizes

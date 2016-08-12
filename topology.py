@@ -6,7 +6,7 @@ Todo: add find_input_blobs
 Todo: remove Node.layer
 """
 from collections import OrderedDict, Counter
-DEBUG = False
+DEBUG = True
 import copy
 
 def debug(str):
@@ -160,13 +160,16 @@ class Topology:
         BFS traversal of the topology graph
         """
         pending = [ self.get_start_node() ]
+        done = []
         while len(pending)>0:
             node = pending.pop()
+            done.append(node)
             if node_cb != None: node_cb(node)
             outgoing_edges = self.find_outgoing_edges(node)
             for edge in outgoing_edges:
                 if edge_cb!=None: edge_cb(edge)
-                if edge.dst_node!=None: pending.append(edge.dst_node)
+                if (edge.dst_node!=None) and (edge.dst_node not in done): 
+                    pending.append(edge.dst_node)
 
 def populate(caffe_net):
     """
@@ -177,7 +180,10 @@ def populate(caffe_net):
 
     # Input BLOBs
     for i in range(len(caffe_net.input)):
-        graph.add_blob(caffe_net.input[i], caffe_net.input_shape[i].dim, None)
+        if len(caffe_net.input_shape)>0:
+            graph.add_blob(caffe_net.input[i], caffe_net.input_shape[i].dim, None)
+        elif len(caffe_net.input_dim)>0:
+            graph.add_blob(caffe_net.input[i], caffe_net.input_dim[i], None)
 
     for layer in caffe_net.layer:
         debug('evaluating layer: ' + layer.name)
@@ -215,7 +221,11 @@ def populate(caffe_net):
 
         # Add the BLOBs produced by this layer to the topology
         for top_blob in layer.top:
-            graph.add_blob(top_blob, None, producer = new_node)
+            
+            if new_node.type == "Input":
+                graph.add_blob(top_blob, new_node.layer.input_param.shape[0].dim, producer = new_node)
+            else:
+                graph.add_blob(top_blob, None, producer = new_node)
 
     # Add fake output edges
     output_blobs = graph.find_output_blobs()
