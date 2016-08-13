@@ -6,6 +6,7 @@ Todo: add find_input_blobs
 Todo: remove Node.layer
 """
 from collections import OrderedDict, Counter
+import math
 DEBUG = True
 import copy
 
@@ -31,11 +32,10 @@ class PoolingNode(Node):
 
     def transform(self, ifm_shape):
         ofm_shape = copy.deepcopy(ifm_shape)
-
         ifmh = ifm_shape[2]
-        ofmh = (ifmh - self.kernel_size + 2*self.pad) / self.stride + 1
-        ofm_shape[2] = ofmh
-        ofm_shape[3] = ofmh
+        ofmh = math.ceil((ifmh - self.kernel_size + 2.0*self.pad) / self.stride) + 1
+        ofm_shape[2] = int(ofmh)
+        ofm_shape[3] = int(ofmh)
         #print (str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
@@ -52,9 +52,9 @@ class ConvolutionNode(Node):
         ofm_shape = copy.deepcopy(ifm_shape)
         ofm_shape[1] = self.num_output
         ifmh = ifm_shape[2]
-        ofmh = (ifmh - self.kernel_size + 2*self.pad) / self.stride + 1
-        ofm_shape[2] = ofmh
-        ofm_shape[3] = ofmh
+        ofmh = (ifmh - self.kernel_size + 2.0*self.pad) / self.stride + 1
+        ofm_shape[2] = int(ofmh)
+        ofm_shape[3] = int(ofmh)
         #print (str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
