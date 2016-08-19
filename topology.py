@@ -97,6 +97,8 @@ class BLOB:
         return self.name == other.name
 
     def size(self):
+        if self.shape is None:
+            return 0
         # shape[0] is the batch dimension, so don't count it
         return self.shape[1] * self.shape[2] * self.shape[3]
 
