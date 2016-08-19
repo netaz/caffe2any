@@ -22,6 +22,7 @@ import caffe_pb2
 from google.protobuf import text_format
 from printers import ConsolePrinter, CsvPrinter
 import topology
+import copy
 
 DEBUG = False
 
@@ -41,6 +42,12 @@ def is_equal_conv(layer1, layer2):
 
 	return (kernel_size1 == kernel_size2 and stride1 == stride2 and pad1==pad2)
 
+"""
+def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return (self.x, self.y, self.z) == (other.x, other.y, other.z)
+"""
 def is_equal(layer1, layer2):
 	assert layer1.type == layer2.type
 	if layer1.type == "Pooling": 
@@ -64,8 +71,27 @@ def add_unique(layer, unique_layers):
 	if is_unique(layer, unique_layers[layer.type]):
 		unique_layers[layer.type].append(layer)
 
+# def count_memory(blob, sum):
+# 	if blob.shape is None:
+# 		print("ERROR\n " + str(blob))
+# 		return
+# 	blob_size = blob.shape[1] * blob.shape[2] * blob.shape[3]
+# 	print ("))))))" +str(blob) + "  " + str(blob_size))
+# 	# blob.shape[0] is the batch dimension, so don't count it
+# 	sum[0] += blob_size
+
+def sum_blob_mem(tplgy, node, blobs, sum):
+	if node.type == "Input" or node.role == "Modifier":
+		return
+	out_edges = tplgy.find_outgoing_edges(node)
+	for out_edge in out_edges:
+		if out_edge.blob not in blobs:
+			shape = out_edge.blob.shape
+			sum[0] += out_edge.blob.size()
+			blobs.append(out_edge.blob)	
+
 def update_blobs_size(tplgy, node):
-#	print('updating node:' + node.name)
+	#print('updating node:' + node.name)
 	in_edges = tplgy.find_incoming_edges(node)
 	out_edges = tplgy.find_outgoing_edges(node)
 	if node.type == 'Convolution':
@@ -85,23 +111,34 @@ def update_blobs_size(tplgy, node):
 
 	elif node.type == 'Concat':
 		assert len(in_edges)>0 and len(out_edges)>0, node.name
-		if in_edges[0].blob.shape != None:
+		for in_edge in in_edges:
+			if in_edge.blob.shape != None:
+				representative_in_edge_shape = in_edge.blob.shape
+			else:
+				return False
+			
+		if representative_in_edge_shape != None:
 			for out_edge in out_edges:
-				out_edges.blob.shape = copy.deepcopy(in_edges[0].blob.shape)
-				out_edges.blob.shape.dim[2] = 0
+				out_edge.blob.shape = copy.deepcopy(representative_in_edge_shape)
+
 			# concat on the channel dimension
 			ch_dim_size = 0
 			for in_edge in in_edges:
-				ch_dim_size += in_edge.blob.shape.dim[3]
+				ch_dim_size += in_edge.blob.shape[1]
+			
 			for out_edge in out_edges:
-				out_edges.blob.shape.dim[2] = ch_dim_size
-
+				out_edge.blob.shape[1] = ch_dim_size
 
 	elif node.type == 'ROIPooling':
 		assert len(in_edges)==2 and len(out_edges)==1, node.name
 		#print(in_edges[0].blob.shape)
 		if in_edges[0].blob.shape != None:
 			out_edges[0].blob.shape = in_edges[0].blob.shape
+	elif node.type == 'Eltwise':
+		assert len(in_edges)==2 and len(out_edges)==1, node.name
+		#print(in_edges[0].blob.shape)
+		if in_edges[0].blob.shape != None:
+			out_edges[0].blob.shape = in_edges[0].blob.shape			
 	elif node.type == 'InnerProduct':
 		assert len(in_edges)==1 and len(out_edges)==1, node.name
 		#print(in_edges[0].blob.shape)
@@ -111,10 +148,6 @@ def update_blobs_size(tplgy, node):
 		pass # Don't know how to handle this
 	elif node.type == 'Input':
 		assert len(out_edges)==1, node.name
-		print('------------------------------')
-		print(node.name)
-		print(node.layer.input_param.shape[0].dim)
-		#tplgy.add_blob(node.name, node.layer.input_param.shape[0].dim, None)
 		
 	else:
 		assert len(in_edges)==1 and len(out_edges)==1, node.name
@@ -122,11 +155,13 @@ def update_blobs_size(tplgy, node):
 		if in_edges[0].blob.shape != None:
 			out_edges[0].blob.shape = in_edges[0].blob.shape
 
+	return True
+
 def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('infile', help='input prototxt file')
 	parser.add_argument('-f', '--format', help='output format (csv, console)', default='console')
-	parser.add_argument('-d', '--display', type=str, help='display catalog, unique, output, bfs')
+	parser.add_argument('-d', '--display', type=str, help='display inventory,unique,output,bfs,mem')
 	args = parser.parse_args()
 
 	net = caffe_pb2.NetParameter()
@@ -139,7 +174,7 @@ def main():
 	except IOError:
 		exit("Could not open file " + sys.argv[1])
 
-	tplgy = topology.populate(net)
+	tplgy = topology.parse_caffe_net(net)
 	# calculate BLOBs sizes
 	tplgy.traverse(lambda node: update_blobs_size(tplgy, node))
 
@@ -150,8 +185,8 @@ def main():
 
 	if args.display != None:
 		for disp_opt in args.display.split(','):
-			if disp_opt == 'catalog':
-				printer.print_catalog(tplgy)
+			if disp_opt == 'inventory':
+				printer.print_inventory(tplgy)
 			elif disp_opt == 'unique':
 				unique_nodes = {}
 				tplgy.traverse(lambda node: add_unique(node.layer, unique_nodes))
@@ -163,6 +198,12 @@ def main():
 					print('\t' + output)
 			elif disp_opt == 'bfs':
 				printer.print_bfs(tplgy)
+			elif disp_opt == 'mem':
+				sum = [0]
+				blobs = []
+				#tplgy.traverse_blobs(lambda blob: count_memory(blob, sum))
+				tplgy.traverse(lambda node: sum_blob_mem(tplgy, node, blobs, sum))
+				print("Total BLOB memory: " + str(sum[0]))
 			else:
 				exit ("Error: invalid display option")
 
