@@ -1,2 +1,6 @@
 # Byte-compiled
 *.pyc
+*.csv
+*.png
+*.log
+tmp
