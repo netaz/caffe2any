@@ -78,8 +78,8 @@ class ConsolePrinter(BasePrinter):
 	    }.get(layer.type, self.print_unknown)
 	    print('\t%-20s%-3s' % print_fn(layer))
 
-	def print_catalog(self, tplgy):
-		print ("Catalog:\n--------")
+	def print_inventory(self, tplgy):
+		print ("Inventory:\n--------")
 		node_types_cnt = self.count_nodes(tplgy)
 		for type in node_types_cnt:
 			print('\t%-20s%-3i' % (type, node_types_cnt[type] ))
@@ -130,7 +130,7 @@ class CsvPrinter(BasePrinter):
 	    }.get(layer.type, self.print_unknown)
 	    self.file.write(print_fn(layer) + '\n')
 
-	def print_catalog(self, tplgy):
+	def print_inventory(self, tplgy):
 		node_types_cnt = self.count_nodes(tplgy)
 
 		self.file.write('Type, Count\n')
@@ -144,24 +144,26 @@ class CsvPrinter(BasePrinter):
 			self.print_layer(layer)
 
 	def print_unique_all(self, unique_layers_dict):
-		#unique_nodes = {}
-		#tplgy.traverse(lambda node: add_unique(node.layer, unique_nodes))
-
 		self.file.write('Type, Configuration\n')
 		for type_name in unique_layers_dict:
 			self.print_unique(unique_layers_dict[type_name])
 
 	def print_bfs(self, tplgy):
-		self.file.write('Node, Type, Details,OFMx,OFMy,OFMz\n')
+		self.file.write('Node, Type, Details,OFMz,OFMy,OFMx,Size\n')
+		self.done_blobs = []
+		tplgy.traverse(None, lambda edge: self.print_edge_cb(edge))
 
-		tplgy.traverse(None, 
-			 		   lambda edge: self.file.write((edge.src_node.name if edge.src_node else '') + ',' +
+	def print_edge_cb(self, edge):
+		self.done_blobs.append(edge.blob)
+		size = 0
+		if edge.blob.shape and edge.src_node.role!="Modifier":
+			size = edge.blob.size()
+			
+		self.file.write((edge.src_node.name if edge.src_node else '') + ',' +
 			 		   								(edge.src_node.type if edge.src_node else '') +  ',' +
 			 		   								',' +
 			 		   								(str(edge.blob.shape[1]) if edge.blob.shape else '') + ',' +
 			 		   								(str(edge.blob.shape[2]) if edge.blob.shape else '')+ ',' +
 			 		   								(str(edge.blob.shape[3]) if edge.blob.shape else '') + ',' +
-			 		   								'\n'))
-
-#		        return ('Edge [' + str(self.blob) +  ': ' + (self.src_node.name if self.src_node else 'None') + ' ==> ' + 
- #               (self.dst_node.name if self.dst_node else 'None') +  ']')
+			 		   								str(size) + ',' +
+			 		   								'\n')
