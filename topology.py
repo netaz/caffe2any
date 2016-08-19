@@ -5,26 +5,38 @@ A set of classes to model a DL topology
 Todo: add find_input_blobs
 Todo: remove Node.layer
 """
-from collections import OrderedDict, Counter
+from collections import OrderedDict, Counter, deque
 import math
-DEBUG = True
 import copy
+
+DEBUG = False
+DEBUG_TRANSFORM = False
 
 def debug(str):
     if DEBUG: 
         print (str)
 
+def debug_tr(str):
+    if DEBUG_TRANSFORM: 
+        print (str)
+
 class Node:
-    def __init__(self, name, type, layer):
+    def __init__(self, name, type, layer, role):
         self.name = name
         self.type = type
         self.layer = layer
+        self.role = role
     def __str__(self):
         return self.name + '(' + self.type + ')'
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return self.name == other.name
+
 
 class PoolingNode(Node):
     def __init__(self, name, type, layer):
-        Node.__init__(self, name, type, layer)
+        Node.__init__(self, name, type, layer, 'Producer')
         param = layer.pooling_param
         self.kernel_size = param.kernel_size
         self.stride = param.stride
@@ -36,12 +48,12 @@ class PoolingNode(Node):
         ofmh = math.ceil((ifmh - self.kernel_size + 2.0*self.pad) / self.stride) + 1
         ofm_shape[2] = int(ofmh)
         ofm_shape[3] = int(ofmh)
-        #print (str(ifm_shape) + '--> ' + str(ofm_shape))
+        debug_tr (str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
 class ConvolutionNode(Node):
     def __init__(self, name, type, layer):
-        Node.__init__(self, name, type, layer)
+        Node.__init__(self, name, type, layer, 'Producer')
         param = layer.convolution_param
         self.kernel_size = param.kernel_size
         self.stride = param.stride
@@ -55,16 +67,16 @@ class ConvolutionNode(Node):
         ofmh = (ifmh - self.kernel_size + 2.0*self.pad) / self.stride + 1
         ofm_shape[2] = int(ofmh)
         ofm_shape[3] = int(ofmh)
-        #print (str(ifm_shape) + '--> ' + str(ofm_shape))
+        debug_tr (str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
-def node_factory(name, type, layer):
+def node_factory(name, type, layer, role):
     if type == "Pooling":
         new_node = PoolingNode(name, type, layer)
     elif type == "Convolution":
         new_node = ConvolutionNode(name, type, layer)
     else:    
-        new_node = Node(name, type, layer)
+        new_node = Node(name, type, layer, role)
     return new_node
 
 class BLOB:
@@ -72,13 +84,22 @@ class BLOB:
         self.name = name
         self.shape = shape
         self.producer = producer
-        #print (self.shape)
 
     def __str__(self):
         if self.shape != None:
             return 'BLOB [' + self.name + ': shape=' + str(self.shape) + ']'
         else:
-            return 'BLOB [' + self.name + ']'
+            return 'BLOB [' + self.name + ': shape=None]'
+    
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return self.name == other.name
+
+    def size(self):
+        # shape[0] is the batch dimension, so don't count it
+        return self.shape[1] * self.shape[2] * self.shape[3]
+
 
 class Edge:
     def __init__(self, src_node, dst_node, blob):
@@ -87,8 +108,10 @@ class Edge:
         self.blob = blob
 
     def __str__(self):
-        return ('Edge [' + str(self.blob) +  ': ' + (self.src_node.name if self.src_node else 'None') + ' ==> ' + 
+        return ((self.src_node.name if self.src_node else 'None') + ' ==> ' +
+                str(self.blob) + ' ==> ' +
                 (self.dst_node.name if self.dst_node else 'None') +  ']')
+
 
 class Topology:
     def __init__(self):
@@ -100,8 +123,8 @@ class Topology:
         self.blobs = {}
         self.edges = []
 
-    def add_node(self, name, type, layer):
-        new_node = node_factory(name, type, layer)
+    def add_node(self, name, type, layer, role):
+        new_node = node_factory(name, type, layer, role)
         self.nodes[name] = new_node
         debug('created Node:' + name)
         return new_node
@@ -121,7 +144,7 @@ class Topology:
     def get_start_node(self):
         return self.nodes.values()[0]
 
-    def find_blob(self, name):
+    def find_blob_by_name(self, name):
         if name not in self.blobs:
             return None
         return self.blobs[name]
@@ -155,23 +178,38 @@ class Topology:
                 blobs.append(blob)
         return blobs
 
+    def traverse_blobs(self, blob_cb):
+        done = []
+        for blob in self.blobs:
+            if blob in done: 
+                continue
+            blob_cb(self.blobs[blob])
+
     def traverse(self, node_cb, edge_cb=None):
         """
         BFS traversal of the topology graph
         """
-        pending = [ self.get_start_node() ]
+        pending = deque([ self.get_start_node() ])
         done = []
         while len(pending)>0:
-            node = pending.pop()
+            node = pending.popleft()
             done.append(node)
-            if node_cb != None: node_cb(node)
+
+            if node_cb != None: 
+                # Node callback can indicate failure, in which case we try again later
+                cb_handled = node_cb(node)
+                if cb_handled == False:
+                    pending.append(node)
+                    continue
+            
             outgoing_edges = self.find_outgoing_edges(node)
             for edge in outgoing_edges:
                 if edge_cb!=None: edge_cb(edge)
                 if (edge.dst_node!=None) and (edge.dst_node not in done): 
                     pending.append(edge.dst_node)
 
-def populate(caffe_net):
+# parse_caffe_net
+def parse_caffe_net(caffe_net):
     """
     Create and populate a Topology object, based on a given Caffe protobuf network object
     Todo: fix Input assignment
@@ -183,7 +221,11 @@ def populate(caffe_net):
         if len(caffe_net.input_shape)>0:
             graph.add_blob(caffe_net.input[i], caffe_net.input_shape[i].dim, None)
         elif len(caffe_net.input_dim)>0:
-            graph.add_blob(caffe_net.input[i], caffe_net.input_dim[i], None)
+            #graph.add_blob(caffe_net.input[i], caffe_net.input_dim[i], None)
+            graph.add_blob(caffe_net.input[i], caffe_net.input_dim, None)
+
+    if len(caffe_net.layer)<1:
+        exit("Something went wrong - the parser can't find any layers in the network")
 
     for layer in caffe_net.layer:
         debug('evaluating layer: ' + layer.name)
@@ -203,34 +245,34 @@ def populate(caffe_net):
             included = included and not layer_phase.phase == phase
           if not included:
             continue
-        
-        # Some prototxt files don't set the 'layer.exclude/layer.include' attributes.
-        # Therefore, manually filter training-only layers
-        if layer.type in ['Dropout']:
-            continue
 
-        new_node = graph.add_node(layer.name, layer.type, layer)
+        node_role = 'Producer'
+        if (len(layer.bottom) == 1 and len(layer.top) == 1 and
+           layer.bottom[0] == layer.top[0]):
+            # We have an in-place neuron layer.
+            node_role = 'Modifier'
+        
+        new_node = graph.add_node(layer.name, layer.type, layer, node_role)
 
         # Iterate over BLOBs consumed by this layer and create edges to them
-        for bottom_blob in layer.bottom:
-            blob = graph.find_blob(bottom_blob)
+        for caffe_bottom_blob in layer.bottom:
+            blob = graph.find_blob_by_name(caffe_bottom_blob)
             if blob == None:
                 raise ValueError('could not find BLOB:' + bottom_blob)
 
             edge = graph.add_edge(src=blob.producer, dst=new_node, blob=blob)  
 
         # Add the BLOBs produced by this layer to the topology
-        for top_blob in layer.top:
-            
+        for caffe_top_blob in layer.top:
             if new_node.type == "Input":
-                graph.add_blob(top_blob, new_node.layer.input_param.shape[0].dim, producer = new_node)
+                graph.add_blob(caffe_top_blob, new_node.layer.input_param.shape[0].dim, producer = new_node)
             else:
-                graph.add_blob(top_blob, None, producer = new_node)
+                graph.add_blob(caffe_top_blob, None, producer = new_node)
 
     # Add fake output edges
     output_blobs = graph.find_output_blobs()
     for blob_name in output_blobs:
-        blob = graph.find_blob(blob_name)
+        blob = graph.find_blob_by_name(blob_name)
         graph.add_edge(src=blob.producer, dst=None, blob=blob)  
 
     return graph
