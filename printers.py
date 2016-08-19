@@ -54,7 +54,9 @@ class ConsolePrinter(BasePrinter):
 			   'k='+str(kernel_size)+'x'+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad)
 		
 	def print_deconv(self, layer):
-		return layer.convolution_param
+		kernel_size, stride, pad = BasePrinter.print_conv(self, layer)
+		return 'Deconvolution', \
+			   'k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad)
 
 	def print_conv(self, layer):
 		kernel_size, stride, pad = BasePrinter.print_conv(self, layer)
@@ -108,7 +110,8 @@ class CsvPrinter(BasePrinter):
 		return "Pool," + pooling_type[pool] + ' k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad)
 		
 	def print_deconv(self, layer):
-		return layer.convolution_param
+		kernel_size, stride, pad = BasePrinter.print_conv(self, layer)
+		return 'Deconvolution, k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad) 
 
 	def print_conv(self, layer):
 		kernel_size, stride, pad = BasePrinter.print_conv(self, layer)
