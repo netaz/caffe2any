@@ -98,6 +98,10 @@ def update_blobs_size(tplgy, node):
 		assert len(in_edges)==1 and len(out_edges)==1, node.name
 		if in_edges[0].blob.shape != None:
 			out_edges[0].blob.shape = node.transform(in_edges[0].blob.shape)
+	elif node.type == 'InnerProduct':
+		assert len(in_edges)==1 and len(out_edges)==1, node.name
+		if in_edges[0].blob.shape != None:
+			out_edges[0].blob.shape = node.transform(in_edges[0].blob.shape)
 	elif node.type == 'ReLU':
 		assert len(in_edges)==1, node.name
 		if in_edges[0].blob.shape != None:
@@ -108,7 +112,6 @@ def update_blobs_size(tplgy, node):
 		if in_edges[0].blob.shape != None:
 			for edge in out_edges:
 				edge.blob.shape = node.transform(in_edges[0].blob.shape)
-
 	elif node.type == 'Concat':
 		assert len(in_edges)>0 and len(out_edges)>0, node.name
 		for in_edge in in_edges:
@@ -139,11 +142,6 @@ def update_blobs_size(tplgy, node):
 		#print(in_edges[0].blob.shape)
 		if in_edges[0].blob.shape != None:
 			out_edges[0].blob.shape = in_edges[0].blob.shape			
-	elif node.type == 'InnerProduct':
-		assert len(in_edges)==1 and len(out_edges)==1, node.name
-		#print(in_edges[0].blob.shape)
-		if in_edges[0].blob.shape != None:
-			out_edges[0].blob.shape = in_edges[0].blob.shape
 	elif node.type == 'Python':
 		pass # Don't know how to handle this
 	elif node.type == 'Input':

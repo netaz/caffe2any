@@ -70,11 +70,24 @@ class ConvolutionNode(Node):
         debug_tr (str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
+class InnerProductNode(Node):
+    def __init__(self, name, type, layer):
+        Node.__init__(self, name, type, layer, 'Producer')
+        self.num_output = layer.inner_product_param.num_output
+        
+    def transform(self, ifm_shape):
+        ofm_shape = copy.deepcopy(ifm_shape)
+        ofm_shape[1] = self.num_output
+        debug_tr (str(ifm_shape) + '--> ' + str(ofm_shape))
+        return ofm_shape
+
 def node_factory(name, type, layer, role):
     if type == "Pooling":
         new_node = PoolingNode(name, type, layer)
     elif type == "Convolution":
         new_node = ConvolutionNode(name, type, layer)
+    elif type == "InnerProduct":
+        new_node = InnerProductNode(name, type, layer)
     else:    
         new_node = Node(name, type, layer, role)
     return new_node
