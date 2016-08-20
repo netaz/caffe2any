@@ -119,7 +119,7 @@ class CsvPrinter(BasePrinter):
 
 	def print_lrn(self, layer):
 		local_size, alpha, beta, type = BasePrinter.print_lrn(self, layer)
-		return 'LRN,' + lrn_type[type] + 'local_size=' + str(local_size) + ' alpha=' + str(alpha) + ' beta=' + str(beta)
+		return 'LRN,' + lrn_type[type] + ' local_size=' + str(local_size) + ' alpha=' + str(alpha) + ' beta=' + str(beta)
 
 	def print_unknown(self, layer):
 		return layer.type + ','
