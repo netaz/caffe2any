@@ -40,14 +40,8 @@ def is_equal_conv(layer1, layer2):
 	stride2 = param2.stride
 	pad2 = param2.pad
 
-	return (kernel_size1 == kernel_size2 and stride1 == stride2 and pad1==pad2)
+	return (kernel_size1, stride1, pad1) == (kernel_size2, stride2, pad2)
 
-"""
-def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return NotImplemented
-        return (self.x, self.y, self.z) == (other.x, other.y, other.z)
-"""
 def is_equal(layer1, layer2):
 	assert layer1.type == layer2.type
 	if layer1.type == "Pooling": 
@@ -61,15 +55,19 @@ def is_equal(layer1, layer2):
 def is_unique(layer, unique_list):
 	unique = True
 	for unique_layer in unique_list:
-		if is_equal(unique_layer, layer):
+		if is_equal(unique_layer[0], layer):
 			unique = False
+			unique_list.remove(unique_layer)
+			unique_list.append((layer, unique_layer[1]+1))
+			break
 	return unique	
 
 def add_unique(layer, unique_layers):
 	if unique_layers.get(layer.type)==None:
 		unique_layers[layer.type] = []
 	if is_unique(layer, unique_layers[layer.type]):
-		unique_layers[layer.type].append(layer)
+		unique_layers[layer.type].append((layer, 1))
+
 
 # def count_memory(blob, sum):
 # 	if blob.shape is None:

@@ -8,6 +8,7 @@ from collections import Counter
 
 pooling_type = { 0:'MAX', 1:'AVG', 2:'STOCHASTIC'}
 lrn_type = { 0:'ACROSS_CHANNELS', 1:'WITHIN_CHANNEL'}
+PIXEL_SIZE_BYTES = 2   # TODO: make this configrable
 
 class BasePrinter:
 	def print_pool(self, layer):
@@ -48,37 +49,37 @@ class BasePrinter:
 class ConsolePrinter(BasePrinter):
 	"""A simple console printer"""
 
-	def print_pool(self, layer):
+	def print_pool(self, layer, count):
 		pool, kernel_size, stride, pad = BasePrinter.print_pool(self, layer)
 		return 'Pool='+pooling_type[pool], \
-			   'k='+str(kernel_size)+'x'+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad)
+			   'k='+str(kernel_size)+'x'+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad), count
 		
-	def print_deconv(self, layer):
+	def print_deconv(self, layer, count):
 		kernel_size, stride, pad = BasePrinter.print_conv(self, layer)
 		return 'Deconvolution', \
-			   'k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad)
+			   'k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad), count
 
-	def print_conv(self, layer):
+	def print_conv(self, layer, count):
 		kernel_size, stride, pad = BasePrinter.print_conv(self, layer)
 		return 'Convolution', \
-			   'k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad)
+			   'k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad), count
 
-	def print_lrn(self, layer):
+	def print_lrn(self, layer, count):
 		local_size, alpha, beta, type = BasePrinter.print_lrn(self, layer)
 		return 'LRN='+ lrn_type[type], \
-			   'local_size=' + str(local_size) + ' alpha=' + str(alpha) + ' beta=' + str(beta)
+			   'local_size=' + str(local_size) + ' alpha=' + str(alpha) + ' beta=' + str(beta), count
 
-	def print_unknown(self, layer):
-		return layer.type, ""
+	def print_unknown(self, layer, count):
+		return layer.type, "", count
 
-	def print_layer(self, layer):
+	def print_layer(self, layer, count):
 	    print_fn =  {
 	        "Pooling" : self.print_pool,
 	        "Convolution" : self.print_conv,
 	        "Deconvolution" : self.print_deconv,
 	        "LRN" : self.print_lrn,
 	    }.get(layer.type, self.print_unknown)
-	    print('\t%-20s%-3s' % print_fn(layer))
+	    print('\t%-20s%-3s Count=%-10d' % print_fn(layer, count))
 
 	def print_inventory(self, tplgy):
 		print ("Inventory:\n--------")
@@ -88,7 +89,7 @@ class ConsolePrinter(BasePrinter):
 
 	def print_unique(self, unique_layers_list):
 		for layer in unique_layers_list:
-			self.print_layer(layer)
+			self.print_layer(layer[0], layer[1])
 
 	def print_unique_all(self, unique_layers_dict):
 		print ("Unique:\n--------")
@@ -131,7 +132,8 @@ class CsvPrinter(BasePrinter):
 	        "Deconvolution" : self.print_deconv,
 	        "LRN" : self.print_lrn,
 	    }.get(layer.type, self.print_unknown)
-	    self.file.write(print_fn(layer) + '\n')
+	    #self.file.write(print_fn(layer) + '\n')
+	    return print_fn(layer)
 
 	def print_inventory(self, tplgy):
 		node_types_cnt = self.count_nodes(tplgy)
@@ -144,7 +146,8 @@ class CsvPrinter(BasePrinter):
 
 	def print_unique(self, unique_layers_list):
 		for layer in unique_layers_list:
-			self.print_layer(layer)
+			#self.print_layer(layer[0])
+			self.file.write(self.print_layer(layer[0]) + '\n')
 
 	def print_unique_all(self, unique_layers_dict):
 		self.file.write('Type, Configuration\n')
@@ -152,21 +155,25 @@ class CsvPrinter(BasePrinter):
 			self.print_unique(unique_layers_dict[type_name])
 
 	def print_bfs(self, tplgy):
-		self.file.write('Node, Type, Details,OFMz,OFMy,OFMx,Size\n')
+		self.file.write('Node, Type, Details,OFMz,OFMy,OFMx,Size (Pixels), Size (Bytes)\n')
 		self.done_blobs = []
 		tplgy.traverse(None, lambda edge: self.print_edge_cb(edge))
 
 	def print_edge_cb(self, edge):
+		if edge.blob in self.done_blobs:
+			return # been there, done that
+
 		self.done_blobs.append(edge.blob)
 		size = 0
 		if edge.blob.shape and edge.src_node.role!="Modifier":
 			size = edge.blob.size()
 			
 		self.file.write((edge.src_node.name if edge.src_node else '') + ',' +
-			 		   								(edge.src_node.type if edge.src_node else '') +  ',' +
-			 		   								',' +
-			 		   								(str(edge.blob.shape[1]) if edge.blob.shape else '') + ',' +
-			 		   								(str(edge.blob.shape[2]) if edge.blob.shape else '')+ ',' +
-			 		   								(str(edge.blob.shape[3]) if edge.blob.shape else '') + ',' +
-			 		   								str(size) + ',' +
-			 		   								'\n')
+						#(edge.src_node.type if edge.src_node else '') +  ',' +
+						(str(self.print_layer(edge.src_node.layer)) if edge.src_node else ',') +  ',' +
+						(str(edge.blob.shape[1]) if edge.blob.shape else '') + ',' +
+						(str(edge.blob.shape[2]) if edge.blob.shape else '')+ ',' +
+						(str(edge.blob.shape[3]) if edge.blob.shape else '') + ',' +
+						str(size) + ',' +
+						str(size*PIXEL_SIZE_BYTES) + ',' +
+						'\n')
