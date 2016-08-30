@@ -41,6 +41,7 @@ class PoolingNode(Node):
         self.kernel_size = param.kernel_size
         self.stride = param.stride
         self.pad = param.pad
+        self.pool_type = param.pool
 
     def transform(self, ifm_shape):
         ofm_shape = copy.deepcopy(ifm_shape)
@@ -81,6 +82,14 @@ class InnerProductNode(Node):
         debug_tr (str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
+class LRNNode(Node):
+    def __init__(self, name, type, layer):
+        Node.__init__(self, name, type, layer, 'Producer')
+        param = layer.lrn_param
+        self.alpha = layer.lrn_param.alpha # default = 1.
+        self.beta = layer.lrn_param.beta # default = 0.75
+        self.type = layer.lrn_param.norm_region
+
 def node_factory(name, type, layer, role):
     if type == "Pooling":
         new_node = PoolingNode(name, type, layer)
@@ -88,6 +97,8 @@ def node_factory(name, type, layer, role):
         new_node = ConvolutionNode(name, type, layer)
     elif type == "InnerProduct":
         new_node = InnerProductNode(name, type, layer)
+    elif type == "LRN":
+        new_node = LRNNode(name, type, layer)
     else:    
         new_node = Node(name, type, layer, role)
     return new_node
