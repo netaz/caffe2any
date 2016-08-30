@@ -21,10 +21,9 @@ def debug_tr(str):
         print (str)
 
 class Node:
-    def __init__(self, name, type, layer, role):
+    def __init__(self, name, type, role):
         self.name = name
         self.type = type
-        self.layer = layer
         self.role = role
     def __str__(self):
         return self.name + '(' + self.type + ')'
@@ -32,16 +31,22 @@ class Node:
         if not isinstance(other, self.__class__):
             return NotImplemented
         return self.name == other.name
-
+    def is_same(this, other):
+        return True
 
 class PoolingNode(Node):
     def __init__(self, name, type, layer):
-        Node.__init__(self, name, type, layer, 'Producer')
+        Node.__init__(self, name, type, 'Producer')
         param = layer.pooling_param
         self.kernel_size = param.kernel_size
         self.stride = param.stride
         self.pad = param.pad
         self.pool_type = param.pool
+
+    def is_same(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return (self.kernel_size, self.stride, self.pad, self.pool_type) == (other.kernel_size, other.stride, other.pad, other.pool_type)
 
     def transform_ifm(self, ifm_shape):
         ofm_shape = copy.deepcopy(ifm_shape)
@@ -54,12 +59,17 @@ class PoolingNode(Node):
 
 class ConvolutionNode(Node):
     def __init__(self, name, type, layer):
-        Node.__init__(self, name, type, layer, 'Producer')
+        Node.__init__(self, name, type, 'Producer')
         param = layer.convolution_param
         self.kernel_size = param.kernel_size
         self.stride = param.stride
         self.pad = param.pad
         self.num_output = param.num_output
+
+    def is_same(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return (self.kernel_size, self.stride, self.pad) == (other.kernel_size, other.stride, other.pad)
 
     def transform_ifm(self, ifm_shape):
         ofm_shape = copy.deepcopy(ifm_shape)
@@ -73,7 +83,7 @@ class ConvolutionNode(Node):
 
 class InnerProductNode(Node):
     def __init__(self, name, type, layer):
-        Node.__init__(self, name, type, layer, 'Producer')
+        Node.__init__(self, name, type, 'Producer')
         self.num_output = layer.inner_product_param.num_output
         
     def transform_ifm(self, ifm_shape):
@@ -84,11 +94,17 @@ class InnerProductNode(Node):
 
 class LRNNode(Node):
     def __init__(self, name, type, layer):
-        Node.__init__(self, name, type, layer, 'Producer')
+        Node.__init__(self, name, type, 'Producer')
         param = layer.lrn_param
+        self.norm_region = layer.lrn_param.norm_region
+        self.local_size = layer.lrn_param.local_size
         self.alpha = layer.lrn_param.alpha # default = 1.
         self.beta = layer.lrn_param.beta # default = 0.75
-        self.type = layer.lrn_param.norm_region
+        
+    def is_same(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return (self.norm_region, self.alpha, self.beta, self.local_size) == (other.norm_region, other.alpha, other.beta, other.local_size)
 
 def node_factory(name, type, layer, role):
     if type == "Pooling":
@@ -100,7 +116,7 @@ def node_factory(name, type, layer, role):
     elif type == "LRN":
         new_node = LRNNode(name, type, layer)
     else:    
-        new_node = Node(name, type, layer, role)
+        new_node = Node(name, type, role)
     return new_node
 
 class BLOB:
@@ -291,7 +307,7 @@ def parse_caffe_net(caffe_net):
         # Add the BLOBs produced by this layer to the topology
         for caffe_top_blob in layer.top:
             if new_node.type == "Input":
-                graph.add_blob(caffe_top_blob, new_node.layer.input_param.shape[0].dim, producer = new_node)
+                graph.add_blob(caffe_top_blob, layer.input_param.shape[0].dim, producer = new_node)
             else:
                 graph.add_blob(caffe_top_blob, None, producer = new_node)
 

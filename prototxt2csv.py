@@ -52,21 +52,22 @@ def is_equal(layer1, layer2):
 		return layer1.lrn_param == layer2.lrn_param
 	return True
 
-def is_unique(layer, unique_list):
+def is_unique(node, unique_list):
 	unique = True
 	for unique_layer in unique_list:
-		if is_equal(unique_layer[0], layer):
+		#if is_equal(unique_layer[0], layer):
+		if unique_layer[0].is_same(node):
 			unique = False
 			unique_list.remove(unique_layer)
-			unique_list.append((layer, unique_layer[1]+1))
+			unique_list.append((node, unique_layer[1]+1))
 			break
 	return unique	
 
-def add_unique(layer, unique_layers):
-	if unique_layers.get(layer.type)==None:
-		unique_layers[layer.type] = []
-	if is_unique(layer, unique_layers[layer.type]):
-		unique_layers[layer.type].append((layer, 1))
+def add_unique(node, unique_layers):
+	if unique_layers.get(node.type)==None:
+		unique_layers[node.type] = []
+	if is_unique(node, unique_layers[node.type]):
+		unique_layers[node.type].append((node, 1))
 
 
 # def count_memory(blob, sum):
@@ -185,7 +186,7 @@ def main():
 				printer.print_inventory(tplgy)
 			elif disp_opt == 'unique':
 				unique_nodes = {}
-				tplgy.traverse(lambda node: add_unique(node.layer, unique_nodes))
+				tplgy.traverse(lambda node: add_unique(node, unique_nodes))
 				printer.print_unique_all(unique_nodes)
 			elif disp_opt == 'output':
 				print("outputs:")
