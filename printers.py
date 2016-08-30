@@ -49,28 +49,28 @@ class BasePrinter:
 class ConsolePrinter(BasePrinter):
 	"""A simple console printer"""
 
-	def print_pool(self, layer, count):
+	def print_pool(self, layer):
 		pool, kernel_size, stride, pad = BasePrinter.print_pool(self, layer)
-		return 'Pool='+pooling_type[pool], \
-			   'k='+str(kernel_size)+'x'+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad), count
+		return 'Pooling', \
+			   pooling_type[pool] + ', k='+str(kernel_size)+'x'+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad)
 		
-	def print_deconv(self, layer, count):
+	def print_deconv(self, layer):
 		kernel_size, stride, pad = BasePrinter.print_conv(self, layer)
 		return 'Deconvolution', \
-			   'k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad), count
+			   'k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad)
 
-	def print_conv(self, layer, count):
+	def print_conv(self, layer):
 		kernel_size, stride, pad = BasePrinter.print_conv(self, layer)
 		return 'Convolution', \
-			   'k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad), count
+			   'k='+str(kernel_size)+"x"+str(kernel_size) + '/s='+str(stride) + ' pad='+str(pad)
 
-	def print_lrn(self, layer, count):
+	def print_lrn(self, layer):
 		local_size, alpha, beta, type = BasePrinter.print_lrn(self, layer)
-		return 'LRN='+ lrn_type[type], \
-			   'local_size=' + str(local_size) + ' alpha=' + str(alpha) + ' beta=' + str(beta), count
+		return 'LRN', \
+			   lrn_type[type] + ' size=' + str(local_size) + ' alpha=' + str(alpha) + ' beta=' + str(beta)
 
-	def print_unknown(self, layer, count):
-		return layer.type, "", count
+	def print_unknown(self, layer):
+		return layer.type, ""
 
 	def print_layer(self, layer, count):
 	    print_fn =  {
@@ -79,22 +79,27 @@ class ConsolePrinter(BasePrinter):
 	        "Deconvolution" : self.print_deconv,
 	        "LRN" : self.print_lrn,
 	    }.get(layer.type, self.print_unknown)
-	    print('\t%-20s%-3s Count=%-10d' % print_fn(layer, count))
+	    row_format ="{:<20} {:<45} {:<40}"  # 3 is the number of cols
+	    #print('\t%-20s%-3s Count=%-10d' % print_fn(layer, count))
+	    print (row_format.format(*(print_fn(layer) + (count,))))
 
 	def print_inventory(self, tplgy):
-		print ("Inventory:\n--------")
+		print ("Inventory:\n----------")
 		node_types_cnt = self.count_nodes(tplgy)
 		for type in node_types_cnt:
 			print('\t%-20s%-3i' % (type, node_types_cnt[type] ))
+		print("Total=", len(tplgy.nodes))
+		print("")
 
 	def print_unique(self, unique_layers_list):
 		for layer in unique_layers_list:
-			self.print_layer(layer[0], layer[1])
+			self.print_layer(layer[0], layer[1]) # print layer, count
 
 	def print_unique_all(self, unique_layers_dict):
 		print ("Unique:\n--------")
 		for type_name in unique_layers_dict:
 			self.print_unique(unique_layers_dict[type_name])
+		print("")
 
 	def print_bfs(self, tplgy):
 		tplgy.traverse(lambda node: print(str(node)), 
