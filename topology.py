@@ -43,7 +43,7 @@ class PoolingNode(Node):
         self.pad = param.pad
         self.pool_type = param.pool
 
-    def transform(self, ifm_shape):
+    def transform_ifm(self, ifm_shape):
         ofm_shape = copy.deepcopy(ifm_shape)
         ifmh = ifm_shape[2]
         ofmh = math.ceil((ifmh - self.kernel_size + 2.0*self.pad) / self.stride) + 1
@@ -61,7 +61,7 @@ class ConvolutionNode(Node):
         self.pad = param.pad
         self.num_output = param.num_output
 
-    def transform(self, ifm_shape):
+    def transform_ifm(self, ifm_shape):
         ofm_shape = copy.deepcopy(ifm_shape)
         ofm_shape[1] = self.num_output
         ifmh = ifm_shape[2]
@@ -76,7 +76,7 @@ class InnerProductNode(Node):
         Node.__init__(self, name, type, layer, 'Producer')
         self.num_output = layer.inner_product_param.num_output
         
-    def transform(self, ifm_shape):
+    def transform_ifm(self, ifm_shape):
         ofm_shape = copy.deepcopy(ifm_shape)
         ofm_shape[1] = self.num_output
         debug_tr (str(ifm_shape) + '--> ' + str(ofm_shape))
