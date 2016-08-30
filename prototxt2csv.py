@@ -95,11 +95,11 @@ def update_blobs_size(tplgy, node):
 	if node.type == 'Convolution':
 		assert len(in_edges)==1 and len(out_edges)==1, node.name
 		if in_edges[0].blob.shape != None:
-			out_edges[0].blob.shape = node.transform(in_edges[0].blob.shape)
+			out_edges[0].blob.shape = node.transform_ifm(in_edges[0].blob.shape)
 	elif node.type == 'InnerProduct':
 		assert len(in_edges)==1 and len(out_edges)==1, node.name
 		if in_edges[0].blob.shape != None:
-			out_edges[0].blob.shape = node.transform(in_edges[0].blob.shape)
+			out_edges[0].blob.shape = node.transform_ifm(in_edges[0].blob.shape)
 	elif node.type == 'ReLU':
 		assert len(in_edges)==1, node.name
 		if in_edges[0].blob.shape != None:
@@ -109,7 +109,7 @@ def update_blobs_size(tplgy, node):
 		assert len(in_edges)==1 and len(out_edges)>0, node.name
 		if in_edges[0].blob.shape != None:
 			for edge in out_edges:
-				edge.blob.shape = node.transform(in_edges[0].blob.shape)
+				edge.blob.shape = node.transform_ifm(in_edges[0].blob.shape)
 	elif node.type == 'Concat':
 		assert len(in_edges)>0 and len(out_edges)>0, node.name
 		for in_edge in in_edges:
