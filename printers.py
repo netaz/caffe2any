@@ -91,7 +91,7 @@ class CsvPrinter(BasePrinter):
 
 	def print_unknown(self, node):
 		return str(node.type) + ','
-		
+	
 	def print_layer(self, node):
 	    print_fn =  {
 	        "Pooling" : self.print_pool,
@@ -100,6 +100,23 @@ class CsvPrinter(BasePrinter):
 	        "LRN" : self.print_lrn,
 	    }.get(node.type, self.print_unknown)
 	    return print_fn(node)
+
+	def print_MACs(self, node, ofms_descriptor, tplgy):
+		if node.type != 'Convolution':
+			return '0'
+
+		edges = tplgy.find_incoming_edges(node)
+		assert(len(edges) == 1)
+
+		num_ifms = edges[0].blob.shape[1]
+		
+		# macs = #OFMs*OFM_X*OFM_Y*#IFMs*K_X*K_Y
+		num_ofms = ofms_descriptor[1]
+		ofm_x = ofms_descriptor[2]
+		ofm_y = ofms_descriptor[3]
+		MACs = num_ofms * ofm_x * ofm_y * num_ifms * node.kernel_size * node.kernel_size
+		return str(MACs)
+
 
 	def print_inventory(self, tplgy):
 		node_types_cnt = self.count_nodes(tplgy)
@@ -121,11 +138,11 @@ class CsvPrinter(BasePrinter):
 		self.file.write('\n')
 
 	def print_bfs(self, tplgy):
-		self.file.write('Node, Type, Details,OFMz,OFMy,OFMx,Size (Pixels), Size (Bytes)\n')
+		self.file.write('Node, Type, Details,OFMz,OFMy,OFMx,Size (pixels), Size (bytes), MACs\n')
 		self.done_blobs = []
-		tplgy.traverse(None, lambda edge: self.print_edge_cb(edge))
+		tplgy.traverse(None, lambda edge: self.print_edge_cb(edge, tplgy))
 
-	def print_edge_cb(self, edge):
+	def print_edge_cb(self, edge, tplgy):
 		if edge.blob in self.done_blobs:
 			return # been there, done that
 
@@ -134,11 +151,13 @@ class CsvPrinter(BasePrinter):
 		if edge.blob.shape and edge.src_node.role!="Modifier":
 			size = edge.blob.size()
 			
-		self.file.write((edge.src_node.name if edge.src_node else '') + ',' +
-						(str(self.print_layer(edge.src_node)) if edge.src_node else ',') +  ',' +
-						(str(edge.blob.shape[1]) if edge.blob.shape else '') + ',' +
-						(str(edge.blob.shape[2]) if edge.blob.shape else '')+ ',' +
-						(str(edge.blob.shape[3]) if edge.blob.shape else '') + ',' +
-						str(size) + ',' +
-						str(size*PIXEL_SIZE_BYTES) + ',' +
-						'\n')
+		self.file.write(
+			(edge.src_node.name if edge.src_node else '') + ',' +						# Node name
+			(str(self.print_layer(edge.src_node)) if edge.src_node else ',') +  ',' +	# Layer type, details
+			(str(edge.blob.shape[1]) if edge.blob.shape else '') + ',' +				# OFMz
+			(str(edge.blob.shape[2]) if edge.blob.shape else '')+ ',' +					# OFMy
+			(str(edge.blob.shape[3]) if edge.blob.shape else '') + ',' +				# OFMx
+			str(size) + ',' +															# size - pixels
+			str(size*PIXEL_SIZE_BYTES) + ',' +											# size - bytes
+			self.print_MACs(edge.src_node, edge.blob.shape, tplgy) + ',' +				# MACs
+			'\n')
