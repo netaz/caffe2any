@@ -20,8 +20,11 @@ class ConsolePrinter(BasePrinter):
 	"""A simple console printer"""
 
 	def print_pool(self, node):
-		return 'Pooling', \
-			   pooling_type[node.pool_type] + ', k='+str(node.kernel_size)+'x'+str(node.kernel_size) + '/s='+str(node.stride) + ' pad='+str(node.pad)
+		desc = pooling_type[node.pool_type] + ', k='+str(node.kernel_size)+'x'+str(node.kernel_size) + '/s='+str(node.stride) + ' pad='+str(node.pad)
+		if node.ceiling:
+			desc += ' ceiling'
+		return 'Pooling', desc
+		
 		
 	def print_deconv(self, node):
 		return 'Deconvolution', \
@@ -78,7 +81,10 @@ class CsvPrinter(BasePrinter):
 		self.file = open(fname, "wt")
 
 	def print_pool(self, node):
-		return "Pool," + pooling_type[node.pool_type] + ' k='+str(node.kernel_size)+"x"+str(node.kernel_size) + '/s='+str(node.stride) + ' pad='+str(node.pad)
+		desc = "Pool," + pooling_type[node.pool_type] + ' k='+str(node.kernel_size)+"x"+str(node.kernel_size) + '/s='+str(node.stride) + ' pad='+str(node.pad)
+		if node.ceiling:
+			desc += ' ceiling'			   
+		return desc
 		
 	def print_deconv(self, node):
 		return 'Deconvolution, k='+str(node.kernel_size)+"x"+str(node.kernel_size) + '/s='+str(node.stride) + ' pad='+str(node.pad) 
@@ -101,15 +107,25 @@ class CsvPrinter(BasePrinter):
 	    }.get(node.type, self.print_unknown)
 	    return print_fn(node)
 
+	def print_ifms(self, node, tplgy):
+		if node.type not in ['Convolution', 'Pooling']:
+			return ' , , '
+
+		edges = tplgy.find_incoming_edges(node)
+		assert(len(edges) == 1)
+
+		return str(edges[0].blob.shape[1]) + ',' + str(edges[0].blob.shape[2]) + ',' + str(edges[0].blob.shape[3])
+
+
 	def print_MACs(self, node, ofms_descriptor, tplgy):
 		if node.type != 'Convolution':
-			return '0'
+			return ''
 
 		edges = tplgy.find_incoming_edges(node)
 		assert(len(edges) == 1)
 
 		num_ifms = edges[0].blob.shape[1]
-		
+
 		# macs = #OFMs*OFM_X*OFM_Y*#IFMs*K_X*K_Y
 		num_ofms = ofms_descriptor[1]
 		ofm_x = ofms_descriptor[2]
@@ -138,7 +154,7 @@ class CsvPrinter(BasePrinter):
 		self.file.write('\n')
 
 	def print_bfs(self, tplgy):
-		self.file.write('Node, Type, Details,OFMz,OFMy,OFMx,Size (pixels), Size (bytes), MACs\n')
+		self.file.write('Node, Type, Details,IFMz,IFMy,IFMx,OFMz,OFMy,OFMx,Size (pixels), Size (bytes), MACs\n')
 		self.done_blobs = []
 		tplgy.traverse(None, lambda edge: self.print_edge_cb(edge, tplgy))
 
@@ -154,6 +170,7 @@ class CsvPrinter(BasePrinter):
 		self.file.write(
 			(edge.src_node.name if edge.src_node else '') + ',' +						# Node name
 			(str(self.print_layer(edge.src_node)) if edge.src_node else ',') +  ',' +	# Layer type, details
+			self.print_ifms(edge.src_node, tplgy)  + ',' +								# IFM
 			(str(edge.blob.shape[1]) if edge.blob.shape else '') + ',' +				# OFMz
 			(str(edge.blob.shape[2]) if edge.blob.shape else '')+ ',' +					# OFMy
 			(str(edge.blob.shape[3]) if edge.blob.shape else '') + ',' +				# OFMx

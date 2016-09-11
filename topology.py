@@ -51,7 +51,11 @@ class PoolingNode(Node):
     def transform_ifm(self, ifm_shape):
         ofm_shape = copy.deepcopy(ifm_shape)
         ifmh = ifm_shape[2]
+        ofmw = (ifmh - self.kernel_size + 2.0*self.pad) / self.stride + 1
         ofmh = math.ceil((ifmh - self.kernel_size + 2.0*self.pad) / self.stride) + 1
+        # The OFM is square, but I calculate the edges with different rounding strategies.
+        # If the edges have different values, then we need to use the "ceiling"/"same" method
+        self.ceiling = (ofmw != ofmh)
         ofm_shape[2] = int(ofmh)
         ofm_shape[3] = int(ofmh)
         debug_tr (str(ifm_shape) + '--> ' + str(ofm_shape))
@@ -300,7 +304,7 @@ def parse_caffe_net(caffe_net):
         for caffe_bottom_blob in layer.bottom:
             blob = graph.find_blob_by_name(caffe_bottom_blob)
             if blob == None:
-                raise ValueError('could not find BLOB:' + bottom_blob)
+                raise ValueError(layer.name + ' - could not find BLOB:' + caffe_bottom_blob)
 
             edge = graph.add_edge(src=blob.producer, dst=new_node, blob=blob)  
 
