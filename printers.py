@@ -108,31 +108,68 @@ class CsvPrinter(BasePrinter):
 	    return print_fn(node)
 
 	def print_ifms(self, node, tplgy):
-		if node.type not in ['Convolution', 'Pooling']:
-			return ' , , '
-
 		edges = tplgy.find_incoming_edges(node)
-		assert(len(edges) == 1)
+		if node.type in ['Convolution', 'Pooling']:
+			assert(len(edges) == 1)
+			ifm_shape = edges[0].blob.shape
+			return str(ifm_shape[1]) + ',' + str(ifm_shape[2]) + ',' + str(ifm_shape[3])
+		elif node.type in ['InnerProduct']:
+			assert(len(edges) == 1)
+			ifm_shape = edges[0].blob.shape
+			return str(ifm_shape[1]) + ',' + str(ifm_shape[2]) + ',' + str(ifm_shape[3])
+		else:
+			return ',,'
 
-		return str(edges[0].blob.shape[1]) + ',' + str(edges[0].blob.shape[2]) + ',' + str(edges[0].blob.shape[3])
+	def get_weight_size(self, node, tplgy):
+		edges = tplgy.find_incoming_edges(node)
+		if node.type in ['Convolution' ]:
+			assert(len(edges) == 1)
+			num_ifms = edges[0].blob.shape[1]
+			return node.kernel_size * node.kernel_size * node.num_output * num_ifms
+		elif node.type in ['InnerProduct']:
+			assert(len(edges) == 1)
+			return (self.get_ifm_size(node,tplgy) * node.num_output)
+		else:
+			return 0
+
+	def get_bias_size(self, node, tplgy):
+		edges = tplgy.find_incoming_edges(node)
+		if node.type in ['Convolution', 'InnerProduct']:
+			return node.num_output
+		else:
+			return 0
 
 
-	def print_MACs(self, node, ofms_descriptor, tplgy):
-		if node.type != 'Convolution':
+	def get_ifm_size(self, node, tplgy):
+		edges = tplgy.find_incoming_edges(node)
+		if node.type in ['Convolution', 'Pooling']:
+			assert(len(edges) == 1)
+			ifm = edges[0].blob
+			return ifm.size()
+		elif node.type in ['InnerProduct']:
+			assert(len(edges) == 1)
+			ifm_shape = edges[0].blob.shape
+			return (ifm_shape[1] * ifm_shape[2] * ifm_shape[3])
+		else:
 			return ''
 
-		edges = tplgy.find_incoming_edges(node)
-		assert(len(edges) == 1)
+	def print_MACs(self, node, ofms_descriptor, tplgy):
+		if node.type in ['Convolution']:
+			edges = tplgy.find_incoming_edges(node)
+			assert(len(edges) == 1)
 
-		num_ifms = edges[0].blob.shape[1]
+			num_ifms = edges[0].blob.shape[1]
 
-		# macs = #OFMs*OFM_X*OFM_Y*#IFMs*K_X*K_Y
-		num_ofms = ofms_descriptor[1]
-		ofm_x = ofms_descriptor[2]
-		ofm_y = ofms_descriptor[3]
-		MACs = num_ofms * ofm_x * ofm_y * num_ifms * node.kernel_size * node.kernel_size
-		return str(MACs)
-
+			# macs = #OFMs*OFM_X*OFM_Y*#IFMs*K_X*K_Y
+			num_ofms = ofms_descriptor[1]
+			ofm_x = ofms_descriptor[2]
+			ofm_y = ofms_descriptor[3]
+			MACs = num_ofms * ofm_x * ofm_y * num_ifms * node.kernel_size * node.kernel_size
+			return str(MACs)
+		elif node.type in ['InnerProduct']:
+			return str(self.get_weight_size(node,tplgy))
+		else:
+			return ''
 
 	def print_inventory(self, tplgy):
 		node_types_cnt = self.count_nodes(tplgy)
@@ -154,7 +191,7 @@ class CsvPrinter(BasePrinter):
 		self.file.write('\n')
 
 	def print_bfs(self, tplgy):
-		self.file.write('Node, Type, Details,IFMz,IFMy,IFMx,OFMz,OFMy,OFMx,Size (pixels), Size (bytes), MACs\n')
+		self.file.write('Node, Type, Node Details,IFMz,IFMy,IFMx,OFMz,OFMy,OFMx, IFM Size (pixels), OFM Size (pixels), Weights Size(pixels), Bias Size(pixels), MACs\n')
 		self.done_blobs = []
 		tplgy.traverse(None, lambda edge: self.print_edge_cb(edge, tplgy))
 
@@ -163,10 +200,10 @@ class CsvPrinter(BasePrinter):
 			return # been there, done that
 
 		self.done_blobs.append(edge.blob)
-		size = 0
+		ofm_size = 0
 		if edge.blob.shape and edge.src_node.role!="Modifier":
-			size = edge.blob.size()
-			
+			ofm_size = edge.blob.size()
+		
 		self.file.write(
 			(edge.src_node.name if edge.src_node else '') + ',' +						# Node name
 			(str(self.print_layer(edge.src_node)) if edge.src_node else ',') +  ',' +	# Layer type, details
@@ -174,7 +211,9 @@ class CsvPrinter(BasePrinter):
 			(str(edge.blob.shape[1]) if edge.blob.shape else '') + ',' +				# OFMz
 			(str(edge.blob.shape[2]) if edge.blob.shape else '')+ ',' +					# OFMy
 			(str(edge.blob.shape[3]) if edge.blob.shape else '') + ',' +				# OFMx
-			str(size) + ',' +															# size - pixels
-			str(size*PIXEL_SIZE_BYTES) + ',' +											# size - bytes
+			str(self.get_ifm_size(edge.src_node,tplgy)) + ',' +							# IFM size - pixels			
+			str(ofm_size) + ',' +														# OFM size - pixels
+			str(self.get_weight_size(edge.src_node,tplgy)) + ',' +						# Weights size - pixels
+			str(self.get_bias_size(edge.src_node,tplgy)) + ',' +						# Bias size - pixels
 			self.print_MACs(edge.src_node, edge.blob.shape, tplgy) + ',' +				# MACs
 			'\n')

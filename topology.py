@@ -85,6 +85,20 @@ class ConvolutionNode(Node):
         debug_tr (str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
+class DeconvolutionNode(Node):
+    def __init__(self, name, type, layer):
+        Node.__init__(self, name, type, 'Producer')
+        param = layer.convolution_param
+        self.kernel_size = param.kernel_size
+        self.stride = param.stride
+        self.pad = param.pad
+        self.num_output = param.num_output
+
+    def is_same(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return (self.kernel_size, self.stride, self.pad) == (other.kernel_size, other.stride, other.pad)
+
 class InnerProductNode(Node):
     def __init__(self, name, type, layer):
         Node.__init__(self, name, type, 'Producer')
@@ -92,7 +106,8 @@ class InnerProductNode(Node):
         
     def transform_ifm(self, ifm_shape):
         ofm_shape = copy.deepcopy(ifm_shape)
-        ofm_shape[1] = self.num_output
+        ofm_shape[3] = self.num_output #ifm_shape[1] * ifm_shape[2] * ifm_shape[3]
+        ofm_shape[1] = ofm_shape[2] = 1
         debug_tr (str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
@@ -119,6 +134,8 @@ def node_factory(name, type, layer, role):
         new_node = InnerProductNode(name, type, layer)
     elif type == "LRN":
         new_node = LRNNode(name, type, layer)
+    elif type == "Deconvolution":
+        new_node = DeconvolutionNode(name, type, layer)
     else:    
         new_node = Node(name, type, role)
     return new_node
