@@ -26,14 +26,16 @@ import copy
 
 DEBUG = False
 
+
 def debug(str):
     if DEBUG: print (str)
 
+
 def is_equal_conv(layer1, layer2):
-	param1 = layer1.convolution_param
-	kernel_size1 = param1.kernel_size
-	stride1 = param1.stride
-	pad1 = param1.pad
+    param1 = layer1.convolution_param
+    kernel_size1 = param1.kernel_size
+    stride1 = param1.stride
+    pad1 = param1.pad
 	
 	param2 = layer2.convolution_param
 	kernel_size2 = param2.kernel_size

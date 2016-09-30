@@ -35,7 +35,7 @@ LAYER_STYLE_DEFAULT = {'shape': 'record',
 NEURON_LAYER_STYLE = {'shape': 'record',
                       'fillcolor': '#90EE90',
                       'style': 'filled'}
-BLOB_STYLE = {'shape': 'octagon',
+BLOB_STYLE = {'shape': 'box3d',
               'fillcolor': '#E0E0E0',
               'style': 'filled'}
 
@@ -176,12 +176,16 @@ def get_pydot_graph(caffe_net, rankdir, label_edges=True, phase=None):
         if (len(layer.bottom) == 1 and len(layer.top) == 1 and
            layer.bottom[0] == layer.top[0]):
             # We have an in-place neuron layer.
+            # Neta
+            if layer.type == "ReLU":
+                continue
             pydot_nodes[node_name] = pydot.Node(node_label,
                                                 **NEURON_LAYER_STYLE)
         else:
             layer_style = LAYER_STYLE_DEFAULT
             layer_style['fillcolor'] = choose_color_by_layertype(layer.type)
             pydot_nodes[node_name] = pydot.Node(node_label, **layer_style)
+
         for bottom_blob in layer.bottom:
             pydot_nodes[bottom_blob + '_blob'] = pydot.Node('%s' % bottom_blob,
                                                             **BLOB_STYLE)
