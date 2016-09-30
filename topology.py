@@ -219,6 +219,11 @@ class Topology:
         debug('created:' + str(new_edge))
         return new_edge
 
+    def nodes_count(self):
+        node_cnt = []
+        self.traverse(lambda node: node_cnt.append(node.type))
+        return Counter(node_cnt)
+
     def get_start_node(self):
         return self.nodes.values()[0]
 

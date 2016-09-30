@@ -5,21 +5,39 @@ Classes that print to different media
 # See - http://stackoverflow.com/questions/2970858/why-doesnt-print-work-in-a-lambda
 from __future__ import print_function
 from collections import Counter
+import caffe_pb2 as caffe
+
+"""
+pydot is not supported under python 3 and pydot2 doesn't work properly.
+pydotplus works nicely (pip install pydotplus)
+"""
+try:
+    # Try to load pydotplus
+    import pydotplus as pydot
+except ImportError:
+    import pydot
+
+# Internal layer and blob styles.
+LAYER_STYLE_DEFAULT = {'shape': 'record',
+                       'fillcolor': '#6495ED',
+                       'style': 'filled'}
+NEURON_LAYER_STYLE = {'shape': 'record',
+                      'fillcolor': '#90EE90',
+                      'style': 'filled'}
+BLOB_STYLE = {'shape': 'box3d',
+              'fillcolor': '#E0E0E0',
+              'style': 'filled'}
 
 pooling_type = {0: 'MAX', 1: 'AVG', 2: 'STOCHASTIC'}
 lrn_type = {0: 'ACROSS_CHANNELS', 1: 'WITHIN_CHANNEL'}
 PIXEL_SIZE_BYTES = 2  # TODO: make this configrable
 
 
-class BasePrinter:
-    def count_nodes(self, tplgy):
-        node_cnt = []
-        tplgy.traverse(lambda node: node_cnt.append(node.type))
-        return Counter(node_cnt)
-
-
-class ConsolePrinter(BasePrinter):
+class ConsolePrinter:
     """A simple console printer"""
+
+    def __init__(self):
+        pass
 
     def print_pool(self, node):
         desc = pooling_type[node.pool_type] + ', k=' + str(node.kernel_size) + 'x' + str(
@@ -59,7 +77,7 @@ class ConsolePrinter(BasePrinter):
 
     def print_inventory(self, tplgy):
         print("Inventory:\n----------")
-        node_types_cnt = self.count_nodes(tplgy)
+        node_types_cnt = tplgy.nodes_count()
         for type in node_types_cnt:
             print('\t%-20s%-3i' % (type, node_types_cnt[type]))
         print("Total=", len(tplgy.nodes))
@@ -80,7 +98,7 @@ class ConsolePrinter(BasePrinter):
                        lambda edge: print('\t' + str(edge)))
 
 
-class CsvPrinter(BasePrinter):
+class CsvPrinter:
     """A CSV file printer"""
 
     def __init__(self, fname):
@@ -227,3 +245,72 @@ class CsvPrinter(BasePrinter):
             str(self.get_bias_size(edge.src_node, tplgy)) + ',' +  # Bias size - pixels
             self.print_MACs(edge.src_node, edge.blob.shape, tplgy) + ',' +  # MACs
             '\n')
+
+
+class PngPrinter:
+    """The printer prints to PNG files"""
+
+    def __init__(self, args, net):
+        self.output_image_file = filename = args.infile + '.png'
+        self.caffe_net = net
+        print('Drawing net to %s' % self.output_image_file)
+
+
+    def draw_node(self, node, pydot_nodes, tplgy):
+        node_name = "%s_%s" % (node.name, node.type)
+        pydot_nodes[node_name] = pydot.Node(node_name,
+                                        **NEURON_LAYER_STYLE)
+
+    def draw_net(self, caffe_net, rankdir, tplgy):
+        pydot_graph = pydot.Dot(self.caffe_net.name if self.caffe_net.name else 'Net',
+                                graph_type='digraph',
+                                rankdir=rankdir)
+        pydot_nodes = {}
+        pydot_edges = []
+
+        tplgy.traverse(lambda node: self.draw_node(node, pydot_nodes, tplgy))
+
+        # Now, add the nodes and edges to the graph.
+        for node in pydot_nodes.values():
+            pydot_graph.add_node(node)
+        for edge in pydot_edges:
+            pydot_graph.add_edge(
+                pydot.Edge(pydot_nodes[edge['src']],
+                           pydot_nodes[edge['dst']],
+                           label=edge['label']))
+
+        print("number of nodes:", len(pydot_nodes))
+        return pydot_graph.create_png()
+
+    def print_bfs(self, tplgy):
+        self.done_blobs = []
+
+        rankdir = 'TB'  # {'LR', 'TB', 'BT'}
+
+        with open(self.output_image_file, 'wb') as fid:
+            fid.write(self.draw_net(self.caffe_net, rankdir, tplgy))
+
+    def print_edge_cb(self, edge, tplgy):
+        if edge.blob in self.done_blobs:
+            return  # been there, done that
+
+        self.done_blobs.append(edge.blob)
+        ofm_size = 0
+        if edge.blob.shape and edge.src_node.role != "Modifier":
+            ofm_size = edge.blob.size()
+
+        """
+        self.file.write(
+            (edge.src_node.name if edge.src_node else '') + ',' +  # Node name
+            (str(self.print_layer(edge.src_node)) if edge.src_node else ',') + ',' +  # Layer type, details
+            self.print_ifms(edge.src_node, tplgy) + ',' +  # IFM
+            (str(edge.blob.shape[1]) if edge.blob.shape else '') + ',' +  # OFMz
+            (str(edge.blob.shape[2]) if edge.blob.shape else '') + ',' +  # OFMy
+            (str(edge.blob.shape[3]) if edge.blob.shape else '') + ',' +  # OFMx
+            str(self.get_ifm_size(edge.src_node, tplgy)) + ',' +  # IFM size - pixels
+            str(ofm_size) + ',' +  # OFM size - pixels
+            str(self.get_weight_size(edge.src_node, tplgy)) + ',' +  # Weights size - pixels
+            str(self.get_bias_size(edge.src_node, tplgy)) + ',' +  # Bias size - pixels
+            self.print_MACs(edge.src_node, edge.blob.shape, tplgy) + ',' +  # MACs
+            '\n')
+        """
