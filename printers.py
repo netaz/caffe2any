@@ -257,9 +257,21 @@ class PngPrinter:
 
 
     def draw_node(self, node, pydot_nodes, tplgy):
-        node_name = "%s_%s" % (node.name, node.type)
-        pydot_nodes[node_name] = pydot.Node(node_name,
+        #node_name = "%s_%s" % (node.name, node.type)
+        pydot_nodes[node.name] = pydot.Node(node.name,
                                         **NEURON_LAYER_STYLE)
+
+    def draw_edge(self, edge, pydot_edges, tplgy):
+        edge_label = '""'
+#        print(edge.src_node.name)
+        #src_name = edge.src_node.name if edge.src_node else ''
+        #dst_name = edge.dst_node.name if edge.dst_node else ''
+
+        if (edge.src_node is None) or (edge.dst_node is None):
+            return
+        pydot_edges.append({'src': edge.src_node.name,
+                            'dst': edge.dst_node.name,
+                            'label': edge_label})
 
     def draw_net(self, caffe_net, rankdir, tplgy):
         pydot_graph = pydot.Dot(self.caffe_net.name if self.caffe_net.name else 'Net',
@@ -268,7 +280,8 @@ class PngPrinter:
         pydot_nodes = {}
         pydot_edges = []
 
-        tplgy.traverse(lambda node: self.draw_node(node, pydot_nodes, tplgy))
+        tplgy.traverse(lambda node: self.draw_node(node, pydot_nodes, tplgy),
+                       lambda edge: self.draw_edge(edge, pydot_edges, tplgy))
 
         # Now, add the nodes and edges to the graph.
         for node in pydot_nodes.values():
@@ -289,7 +302,7 @@ class PngPrinter:
 
         with open(self.output_image_file, 'wb') as fid:
             fid.write(self.draw_net(self.caffe_net, rankdir, tplgy))
-
+    """
     def print_edge_cb(self, edge, tplgy):
         if edge.blob in self.done_blobs:
             return  # been there, done that
@@ -299,7 +312,7 @@ class PngPrinter:
         if edge.blob.shape and edge.src_node.role != "Modifier":
             ofm_size = edge.blob.size()
 
-        """
+
         self.file.write(
             (edge.src_node.name if edge.src_node else '') + ',' +  # Node name
             (str(self.print_layer(edge.src_node)) if edge.src_node else ',') + ',' +  # Layer type, details
