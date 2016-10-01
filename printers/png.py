@@ -14,9 +14,9 @@ except ImportError:
 # options
 options = {
     'collapse_relu': True,
-    'remove_dropout_node': True,
+    'remove_dropout': True,
     'verbose': True,
-    'node_label': 'caffe', # {'custom', 'caffe', 'minimal'}
+    'node_label': 'custom   ', # {'custom', 'caffe', 'minimal'}
     'label_edges': True,
     'rankdir': 'LR',  # {'LR', 'TB', 'BT'}
 }
@@ -229,7 +229,7 @@ class PngPrinter(object):
         # optional: collapse ReLU nodes
         if options['collapse_relu']:
             tplgy.traverse(lambda node: self.collapse_relu_node(node, tplgy))
-        if options['remove_dropout_node']:
+        if options['remove_dropout']:
             tplgy.traverse(lambda node: self.remove_dropout_node(node, tplgy))
 
         tplgy.traverse(lambda node: self.add_pydot_node(node, tplgy, rankdir),

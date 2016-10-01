@@ -135,13 +135,16 @@ def update_blobs_size(tplgy, node):
             out_edges[0].blob.shape = in_edges[0].blob.shape
     elif node.type == 'Eltwise':
         assert len(in_edges)==2 and len(out_edges)==1, node.name
-        #print(in_edges[0].blob.shape)
         if in_edges[0].blob.shape != None:
             out_edges[0].blob.shape = in_edges[0].blob.shape
     elif node.type == 'Python':
         pass # Don't know how to handle this
     elif node.type == 'Input':
         assert len(out_edges)==1, node.name
+    elif node.type == 'Dropout':
+        assert len(in_edges)==1, node.name
+        if in_edges[0].blob.shape != None:
+            out_edges[0].blob.shape = in_edges[0].blob.shape
 
     else:
         assert len(in_edges)==1 and len(out_edges)==1, node.name
