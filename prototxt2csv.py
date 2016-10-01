@@ -75,15 +75,6 @@ def add_unique(node, unique_layers):
         unique_layers[node.type].append((node, 1))
 
 
-# def count_memory(blob, sum):
-# 	if blob.shape is None:
-# 		print("ERROR\n " + str(blob))
-# 		return
-# 	blob_size = blob.shape[1] * blob.shape[2] * blob.shape[3]
-# 	print ("))))))" +str(blob) + "  " + str(blob_size))
-# 	# blob.shape[0] is the batch dimension, so don't count it
-# 	sum[0] += blob_size
-
 def sum_blob_mem(tplgy, node, blobs, sum):
     if node.type == "Input" or node.role == "Modifier":
         return

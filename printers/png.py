@@ -13,35 +13,60 @@ try:
 except ImportError:
     import pydot
 
-# Internal layer and blob styles.
-LAYER_STYLE_DEFAULT = {'shape': 'record',
-                       'fillcolor': '#6495ED',
-                       'style': 'filled'}
-NEURON_LAYER_STYLE = {'shape': 'record',
-                      'fillcolor': '#90EE90',
-                      'style': 'filled'}
-BLOB_STYLE = {'shape': 'box3d',
-              'fillcolor': '#E0E0E0',
-              'style': 'filled'}
+# Themes
 
+CAFFE_THEME = {
+    'layer_default': {'shape': 'record',
+                    'fillcolor': '#6495ED',
+                    'style': 'filled'},
+
+    'Convolution': {'shape': 'record',
+                    'fillcolor': '#FF5050',
+                    'style': 'filled'},
+
+    'Pooling': {'shape': 'record',
+                'fillcolor': '#FF9900',
+                'style': 'filled'},
+
+    'InnerProduct': {'shape': 'record',
+                'fillcolor': '#CC33FF',
+                'style': 'filled'},
+
+}
+
+SOFT_THEME = {
+    'layer_default': {'shape': 'record',
+                    'fillcolor': '#6495ED',
+                    'style': 'rounded, filled'},
+
+    'Convolution': {'shape': 'record',
+                    'fillcolor': '#FF5050',
+                    'style': 'rounded, filled'},
+
+    'Pooling': {'shape': 'record',
+                'fillcolor': '#FF9900',
+                'style': 'rounded, filled'},
+
+    'InnerProduct': {'shape': 'record',
+                     'fillcolor': '#CC33FF',
+                     'style': 'rounded, filled'},
+
+    'Concat':       {'shape': 'box3d',
+                     'fillcolor': 'gray',
+                     'style': 'filled'}
+}
+
+#theme = CAFFE_THEME
+theme = SOFT_THEME
 
 
 # optional - caffe color scheme
 def choose_style_by_layertype(layertype):
-    layer_style = LAYER_STYLE_DEFAULT
-    layer_style['fillcolor'] = '#6495ED'  # Default
-    if layertype == 'Convolution' or layertype == 'Deconvolution':
-        layer_style['fillcolor'] = '#FF5050'
-    elif layertype == 'Pooling':
-        layer_style['fillcolor'] = '#FF9900'
-        #layer_style['shape'] = 'invtrapezium'
-    elif layertype == 'InnerProduct':
-        layer_style['fillcolor'] = '#CC33FF'
-
-    if layertype == "Concat":
-        layer_style = {'shape': 'box3d',
-                       'fillcolor': 'gray',
-                       'style': 'filled'}
+    try:
+        layer_style = theme[layertype]
+    except:
+        layer_style = theme['layer_default']
+        layer_style['fillcolor'] = '#6495ED'  # Default
 
     return layer_style
 
