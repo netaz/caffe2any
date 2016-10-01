@@ -20,7 +20,8 @@ import argparse
 from collections import deque, Counter
 import caffe_pb2 as caffe
 from google.protobuf import text_format
-import printers
+from printers.png import PngPrinter
+from printers import cvs, console
 import topology
 import copy
 
@@ -182,11 +183,11 @@ def main():
     tplgy.traverse(lambda node: update_blobs_size(tplgy, node))
 
     if args.printer == 'console':
-        printer = printers.ConsolePrinter()
+        printer = console.ConsolePrinter()
     elif args.printer == 'png':
-        printer = printers.PngPrinter(args, net)
+        printer = PngPrinter(args, net)
     else:
-        printer = printers.CsvPrinter(args.infile + '.csv')
+        printer = cvs.CsvPrinter(args.infile + '.csv')
 
     if args.display != None:
         for disp_opt in args.display.split(','):
