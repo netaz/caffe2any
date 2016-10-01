@@ -248,22 +248,6 @@ BLOB_STYLE = {'shape': 'box3d',
               'style': 'filled'}
 
 
-def get_edge_label(layer):
-    """Define edge label based on layer type.
-    """
-
-    if layer.type == 'Data':
-        edge_label = 'Batch ' + str(layer.data_param.batch_size)
-    elif layer.type == 'Convolution' or layer.type == 'Deconvolution':
-        edge_label = str(layer.num_output)
-    elif layer.type == 'InnerProduct':
-        edge_label = str(layer.num_output)
-    else:
-        edge_label = '""'
-
-    return edge_label
-
-
 def get_pooling_types_dict():
     """Get dictionary mapping pooling type number to type name
     """
@@ -273,62 +257,18 @@ def get_pooling_types_dict():
         d[v.number] = k
     return d
 
-def get_layer_label(layer, rankdir, verbose):
-    """Define node label based on layer type.
-
-    Parameters
-    ----------
-    layer : ?
-    rankdir : {'LR', 'TB', 'BT'}
-        Direction of graph layout.
-
-    Returns
-    -------
-    string :
-        A label for the current layer
+# optional - caffe color scheme
+def choose_color_by_layertype(layertype):
+    """Define colors for nodes based on the layer type.
     """
-
-    if verbose==False:
-        return layer.name
-
-    if rankdir in ('TB', 'BT'):
-        # If graph orientation is vertical, horizontal space is free and
-        # vertical space is not; separate words with spaces
-        separator = ' '
-    else:
-        # If graph orientation is horizontal, vertical space is free and
-        # horizontal space is not; separate words with newlines
-        separator = '\\n'
-
-    if layer.type == 'Convolution' or layer.type == 'Deconvolution':
-        # Outer double quotes needed or else colon characters don't parse
-        # properly
-        node_label = '"%s%s(%s)%skernel size: %d%sstride: %d%spad: %d"' %\
-                     (layer.name,
-                      separator,
-                      layer.type,
-                      separator,
-                      layer.kernel_size,
-                      separator,
-                      layer.stride,
-                      separator,
-                      layer.pad)
-    elif layer.type == 'Pooling':
-        pooling_types_dict = get_pooling_types_dict()
-        node_label = '"%s%s(%s %s)%skernel size: %d%sstride: %d%spad: %d"' %\
-                     (layer.name,
-                      separator,
-                      pooling_types_dict[layer.pool_type],
-                      layer.type,
-                      separator,
-                      layer.kernel_size,
-                      separator,
-                      layer.stride,
-                      separator,
-                      layer.pad)
-    else:
-        node_label = '"%s%s(%s)"' % (layer.name, separator, layer.type)
-    return node_label
+    color = '#6495ED'  # Default
+    if layertype == 'Convolution' or layertype == 'Deconvolution':
+        color = '#FF5050'
+    elif layertype == 'Pooling':
+        color = '#FF9900'
+    elif layertype == 'InnerProduct':
+        color = '#CC33FF'
+    return color
 
 
 class PngPrinter:
@@ -342,6 +282,88 @@ class PngPrinter:
 
         print('Drawing net to %s' % self.output_image_file)
 
+    def get_layer_label(self, layer, rankdir, verbose):
+        """Define node label based on layer type.
+
+        Parameters
+        ----------
+        layer : ?
+        rankdir : {'LR', 'TB', 'BT'}
+            Direction of graph layout.
+
+        Returns
+        -------
+        string :
+            A label for the current layer
+        """
+
+        if verbose==False:
+            return layer.name
+
+        if rankdir in ('TB', 'BT'):
+            # If graph orientation is vertical, horizontal space is free and
+            # vertical space is not; separate words with spaces
+            separator = ' '
+        else:
+            # If graph orientation is horizontal, vertical space is free and
+            # horizontal space is not; separate words with newlines
+            separator = '\\n'
+
+        if layer.type == 'Convolution' or layer.type == 'Deconvolution':
+            # Outer double quotes needed or else colon characters don't parse
+            # properly
+            node_label = '"%s%s(%s)%skernel size: %d%sstride: %d%spad: %d"' %\
+                         (layer.name,
+                          separator,
+                          layer.type,
+                          separator,
+                          layer.kernel_size,
+                          separator,
+                          layer.stride,
+                          separator,
+                          layer.pad)
+        elif layer.type == 'Pooling':
+            #pooling_types_dict = get_pooling_types_dict()
+            node_label = self.print_pool(layer, separator)
+            """
+            node_label = '"%s%s(%s %s)%skernel size: %d%sstride: %d%spad: %d"' %\
+                         (layer.name,
+                          separator,
+                          pooling_types_dict[layer.pool_type],
+                          layer.type,
+                          separator,
+                          layer.kernel_size,
+                          separator,
+                          layer.stride,
+                          separator,
+                          layer.pad)
+                          """
+        else:
+            node_label = '"%s%s(%s)"' % (layer.name, separator, layer.type)
+        return node_label
+
+
+    def print_pool(self, node, separator):
+        #optional: compact/verbose
+#        desc = pooling_type[node.pool_type] + ', k=' + str(node.kernel_size) + 'x' + str(
+#            node.kernel_size) + '/s=' + str(node.stride) + ' pad=' + str(node.pad)
+#        if node.ceiling:
+#            desc += ' ceiling'
+#        return '"%s%s(%s)"' % (desc, separator, 'Pooling')
+        pooling_types_dict = get_pooling_types_dict()
+        node_label = '"%s%s(%s %s)%skernel size: %d%sstride: %d%spad: %d"' % \
+                     (node.name,
+                      separator,
+                      pooling_types_dict[node.pool_type],
+                      node.type,
+                      separator,
+                      node.kernel_size,
+                      separator,
+                      node.stride,
+                      separator,
+                      node.pad)
+        return node_label
+
     def merge_nodes(self, src_node, dst_node):
         self.nodes_to_merge[src_node] = {dst_node}
 
@@ -350,16 +372,14 @@ class PngPrinter:
         #self.pydot_nodes[node.name] = pydot.Node(node.name,
                                     #    **NEURON_LAYER_STYLE)
         layer_style = LAYER_STYLE_DEFAULT
-        #layer_style['fillcolor'] = choose_color_by_layertype(layer.type)
+        layer_style['fillcolor'] = choose_color_by_layertype(node.type)
         # optional: verbosity
-        node_label = get_layer_label(node, rankdir, verbose=True)
+        node_label = self.get_layer_label(node, rankdir, verbose=True)
         self.pydot_nodes[node.name] = pydot.Node(node_label, **layer_style)
 
     def add_pydot_edge(self, edge, tplgy):
-
         if (edge.src_node is None) or (edge.dst_node is None):
             return
-
         #optional
         label_edges = True
         if label_edges and edge.blob != None:
