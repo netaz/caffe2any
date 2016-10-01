@@ -17,17 +17,6 @@ try:
 except ImportError:
     import pydot
 
-# Internal layer and blob styles.
-LAYER_STYLE_DEFAULT = {'shape': 'record',
-                       'fillcolor': '#6495ED',
-                       'style': 'filled'}
-NEURON_LAYER_STYLE = {'shape': 'record',
-                      'fillcolor': '#90EE90',
-                      'style': 'filled'}
-BLOB_STYLE = {'shape': 'box3d',
-              'fillcolor': '#E0E0E0',
-              'style': 'filled'}
-
 pooling_type = {0: 'MAX', 1: 'AVG', 2: 'STOCHASTIC'}
 lrn_type = {0: 'ACROSS_CHANNELS', 1: 'WITHIN_CHANNEL'}
 PIXEL_SIZE_BYTES = 2  # TODO: make this configrable
@@ -247,6 +236,101 @@ class CsvPrinter:
             '\n')
 
 
+# Internal layer and blob styles.
+LAYER_STYLE_DEFAULT = {'shape': 'record',
+                       'fillcolor': '#6495ED',
+                       'style': 'filled'}
+NEURON_LAYER_STYLE = {'shape': 'record',
+                      'fillcolor': '#90EE90',
+                      'style': 'filled'}
+BLOB_STYLE = {'shape': 'box3d',
+              'fillcolor': '#E0E0E0',
+              'style': 'filled'}
+
+
+def get_edge_label(layer):
+    """Define edge label based on layer type.
+    """
+
+    if layer.type == 'Data':
+        edge_label = 'Batch ' + str(layer.data_param.batch_size)
+    elif layer.type == 'Convolution' or layer.type == 'Deconvolution':
+        edge_label = str(layer.num_output)
+    elif layer.type == 'InnerProduct':
+        edge_label = str(layer.num_output)
+    else:
+        edge_label = '""'
+
+    return edge_label
+
+
+def get_pooling_types_dict():
+    """Get dictionary mapping pooling type number to type name
+    """
+    desc = caffe.PoolingParameter.PoolMethod.DESCRIPTOR
+    d = {}
+    for k, v in desc.values_by_name.items():
+        d[v.number] = k
+    return d
+
+def get_layer_label(layer, rankdir, verbose):
+    """Define node label based on layer type.
+
+    Parameters
+    ----------
+    layer : ?
+    rankdir : {'LR', 'TB', 'BT'}
+        Direction of graph layout.
+
+    Returns
+    -------
+    string :
+        A label for the current layer
+    """
+
+    if verbose==False:
+        return layer.name
+
+    if rankdir in ('TB', 'BT'):
+        # If graph orientation is vertical, horizontal space is free and
+        # vertical space is not; separate words with spaces
+        separator = ' '
+    else:
+        # If graph orientation is horizontal, vertical space is free and
+        # horizontal space is not; separate words with newlines
+        separator = '\\n'
+
+    if layer.type == 'Convolution' or layer.type == 'Deconvolution':
+        # Outer double quotes needed or else colon characters don't parse
+        # properly
+        node_label = '"%s%s(%s)%skernel size: %d%sstride: %d%spad: %d"' %\
+                     (layer.name,
+                      separator,
+                      layer.type,
+                      separator,
+                      layer.kernel_size,
+                      separator,
+                      layer.stride,
+                      separator,
+                      layer.pad)
+    elif layer.type == 'Pooling':
+        pooling_types_dict = get_pooling_types_dict()
+        node_label = '"%s%s(%s %s)%skernel size: %d%sstride: %d%spad: %d"' %\
+                     (layer.name,
+                      separator,
+                      pooling_types_dict[layer.pool_type],
+                      layer.type,
+                      separator,
+                      layer.kernel_size,
+                      separator,
+                      layer.stride,
+                      separator,
+                      layer.pad)
+    else:
+        node_label = '"%s%s(%s)"' % (layer.name, separator, layer.type)
+    return node_label
+
+
 class PngPrinter:
     """The printer prints to PNG files"""
 
@@ -261,16 +345,27 @@ class PngPrinter:
     def merge_nodes(self, src_node, dst_node):
         self.nodes_to_merge[src_node] = {dst_node}
 
-    def add_node(self, node, tplgy):
+    def add_pydot_node(self, node, tplgy, rankdir):
         #node_name = "%s_%s" % (node.name, node.type)
-        self.pydot_nodes[node.name] = pydot.Node(node.name,
-                                        **NEURON_LAYER_STYLE)
+        #self.pydot_nodes[node.name] = pydot.Node(node.name,
+                                    #    **NEURON_LAYER_STYLE)
+        layer_style = LAYER_STYLE_DEFAULT
+        #layer_style['fillcolor'] = choose_color_by_layertype(layer.type)
+        # optional: verbosity
+        node_label = get_layer_label(node, rankdir, verbose=True)
+        self.pydot_nodes[node.name] = pydot.Node(node_label, **layer_style)
 
-    def add_edge(self, edge, tplgy):
-        edge_label = '""'
+    def add_pydot_edge(self, edge, tplgy):
 
         if (edge.src_node is None) or (edge.dst_node is None):
             return
+
+        #optional
+        label_edges = True
+        if label_edges and edge.blob != None:
+            edge_label = str(edge.blob.shape) #get_edge_label(edge.src_node)
+        else:
+            edge_label = '""'
 
         src_name = edge.src_node.name
         self.pydot_edges.append({'src': src_name,
@@ -283,11 +378,10 @@ class PngPrinter:
             outgoing_edges = tplgy.find_outgoing_edges(node)
             for incoming_edge in incoming_edges:
                 src = incoming_edge.src_node
-                src.name += "\n" + node.name
-                #tplgy.del_edge(edge)
+                src.name += "  +  " + node.name + "\n"
                 for outgoing_edge in outgoing_edges:
-                    tplgy.add_edge(src, outgoing_edge.dst_node, None)
-                    print("adding " + str(src) + "->" + str(outgoing_edge.dst_node))
+                    tplgy.add_edge(src, outgoing_edge.dst_node, incoming_edge.blob)
+                    #print("adding " + str(src) + "->" + str(outgoing_edge.dst_node))
                 tplgy.del_edge(incoming_edge)
 
     def draw_net(self, caffe_net, rankdir, tplgy):
@@ -295,10 +389,13 @@ class PngPrinter:
                                 graph_type='digraph',
                                 rankdir=rankdir)
 
-        tplgy.traverse(lambda node: self.filter_relu_node(node, tplgy))
+        # optional: collapse ReLU nodes
+        collapse_relu = True
+        if collapse_relu:
+            tplgy.traverse(lambda node: self.filter_relu_node(node, tplgy))
 
-        tplgy.traverse(lambda node: self.add_node(node, tplgy),
-                       lambda edge: self.add_edge(edge, tplgy))
+        tplgy.traverse(lambda node: self.add_pydot_node(node, tplgy, rankdir),
+                       lambda edge: self.add_pydot_edge(edge, tplgy))
 
 
         # add the nodes and edges to the graph.
@@ -321,28 +418,3 @@ class PngPrinter:
 
         with open(self.output_image_file, 'wb') as fid:
             fid.write(self.draw_net(self.caffe_net, rankdir, tplgy))
-    """
-    def print_edge_cb(self, edge, tplgy):
-        if edge.blob in self.done_blobs:
-            return  # been there, done that
-
-        self.done_blobs.append(edge.blob)
-        ofm_size = 0
-        if edge.blob.shape and edge.src_node.role != "Modifier":
-            ofm_size = edge.blob.size()
-
-
-        self.file.write(
-            (edge.src_node.name if edge.src_node else '') + ',' +  # Node name
-            (str(self.print_layer(edge.src_node)) if edge.src_node else ',') + ',' +  # Layer type, details
-            self.print_ifms(edge.src_node, tplgy) + ',' +  # IFM
-            (str(edge.blob.shape[1]) if edge.blob.shape else '') + ',' +  # OFMz
-            (str(edge.blob.shape[2]) if edge.blob.shape else '') + ',' +  # OFMy
-            (str(edge.blob.shape[3]) if edge.blob.shape else '') + ',' +  # OFMx
-            str(self.get_ifm_size(edge.src_node, tplgy)) + ',' +  # IFM size - pixels
-            str(ofm_size) + ',' +  # OFM size - pixels
-            str(self.get_weight_size(edge.src_node, tplgy)) + ',' +  # Weights size - pixels
-            str(self.get_bias_size(edge.src_node, tplgy)) + ',' +  # Bias size - pixels
-            self.print_MACs(edge.src_node, edge.blob.shape, tplgy) + ',' +  # MACs
-            '\n')
-        """
