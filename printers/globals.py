@@ -19,4 +19,3 @@ def get_lrn_types_dict():
     return d
 
 lrn_type = get_lrn_types_dict()
-#lrn_type = {0: 'ACROSS_CHANNELS', 1: 'WITHIN_CHANNEL'}

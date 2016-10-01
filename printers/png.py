@@ -1,5 +1,5 @@
 from __future__ import print_function
-from globals import get_pooling_types_dict
+from globals import get_pooling_types_dict, lrn_type
 
 """
 pydot is not supported under python 3 and pydot2 doesn't work properly.
@@ -14,7 +14,9 @@ except ImportError:
 # options
 options = {
     'collapse_relu': True,
+    'remove_dropout_node': True,
     'verbose': True,
+    'node_label': 'caffe', # {'custom', 'caffe', 'minimal'}
     'label_edges': True,
     'rankdir': 'LR',  # {'LR', 'TB', 'BT'}
 }
@@ -85,7 +87,7 @@ class PngPrinter(object):
 
         print('Drawing net to %s' % self.output_image_file)
 
-    def get_layer_label(self, layer, rankdir, verbose):
+    def get_layer_label(self, layer, rankdir, format):
         """Define node label based on layer type.
 
         Parameters
@@ -100,7 +102,7 @@ class PngPrinter(object):
             A label for the current layer
         """
 
-        if verbose is False:
+        if format == "minimal":
             return layer.name
 
         if rankdir in ('TB', 'BT'):
@@ -113,58 +115,61 @@ class PngPrinter(object):
             separator = '\\n'
 
         if layer.type == 'Convolution' or layer.type == 'Deconvolution':
+            node_label = self.print_conv(layer, separator, options['node_label'])
+        elif layer.type == 'Pooling':
+            node_label = self.print_pool(layer, separator, options['node_label'])
+        elif layer.type == 'LRN':
+            node_label = self.print_lrn(layer, separator, options['node_label'])
+        else:
+            node_label = '"%s%s(%s)"' % (layer.name, separator, layer.type)
+        # print (node_label)
+        return node_label
+
+    def print_conv(self, node, separator, format):
+        if format == 'caffe':
             # Outer double quotes needed or else colon characters don't parse
             # properly
             node_label = '"%s%s(%s)%skernel size: %d%sstride: %d%spad: %d"' %\
-                         (layer.name,
-                          separator,
-                          layer.type,
-                          separator,
-                          layer.kernel_size,
-                          separator,
-                          layer.stride,
-                          separator,
-                          layer.pad)
-        elif layer.type == 'Pooling':
-            # pooling_types_dict = get_pooling_types_dict()
-            node_label = self.print_pool(layer, separator)
-            """
-            node_label = '"%s%s(%s %s)%skernel size: %d%sstride: %d%spad: %d"' %\
-                         (layer.name,
-                          separator,
-                          pooling_types_dict[layer.pool_type],
-                          layer.type,
-                          separator,
-                          layer.kernel_size,
-                          separator,
-                          layer.stride,
-                          separator,
-                          layer.pad)
-                          """
+                         (node.name, separator,
+                          node.type, separator,
+                          node.kernel_size, separator,
+                          node.stride, separator, node.pad)
+        elif format == 'custom':
+            node_label = node.name + separator + 'k=' + str(node.kernel_size) + 'x' + str(
+                node.kernel_size) + '/s=' + str(node.stride) + ' pad=' + str(node.pad)
+            node_label = '"%s%s(%s)"' % (node_label, separator, node.type)
         else:
-            node_label = '"%s%s(%s)"' % (layer.name, separator, layer.type)
+            node_label = None
         return node_label
 
+    def print_pool(self, node, separator, format):
+        pooling_type = get_pooling_types_dict()
+        if format=='caffe':
+            node_label = '"%s%s(%s %s)%skernel size: %d%sstride: %d%spad: %d"' % \
+                         (node.name, separator, pooling_type[node.pool_type],
+                          node.type, separator,
+                          node.kernel_size, separator,
+                          node.stride, separator, node.pad)
+        elif format == 'custom':
+            node_label = node.name + separator + pooling_type[node.pool_type] + ', k=' + str(node.kernel_size) + 'x' + str(
+                         node.kernel_size) + '/s=' + str(node.stride) + ' pad=' + str(node.pad)
+            if node.ceiling:
+                node_label += ' ceiling'
+            node_label = '"%s%s(%s)"z' % (node_label, separator, node.type)
+        else:
+            node_label = None
+        return node_label
 
-    def print_pool(self, node, separator):
-        # optional: compact/verbose
-        # desc = pooling_type[node.pool_type] + ', k=' + str(node.kernel_size) + 'x' + str(
-        # node.kernel_size) + '/s=' + str(node.stride) + ' pad=' + str(node.pad)
-        # if node.ceiling:
-        #   desc += ' ceiling'
-        # return '"%s%s(%s)"' % (desc, separator, 'Pooling')
-        pooling_types_dict = get_pooling_types_dict()
-        node_label = '"%s%s(%s %s)%skernel size: %d%sstride: %d%spad: %d"' % \
-                     (node.name,
-                      separator,
-                      pooling_types_dict[node.pool_type],
-                      node.type,
-                      separator,
-                      node.kernel_size,
-                      separator,
-                      node.stride,
-                      separator,
-                      node.pad)
+    def print_lrn(self, node, separator, format):
+        if format == 'caffe':
+            node_label = node.name
+        elif format == 'custom':
+            node_label = node.name + separator + lrn_type[node.norm_region] + \
+                          ' size=' + str(node.local_size) + ' alpha=' + str(
+                          node.alpha) + ' beta=' + str(node.beta)
+            node_label = '"%s%s(%s)"' % (node_label, separator, node.type)
+        else:
+            node_label = None
         return node_label
 
     def add_pydot_node(self, node, tplgy, rankdir):
@@ -172,7 +177,7 @@ class PngPrinter(object):
         # self.pydot_nodes[node.name] = pydot.Node(node.name,
                                     #    **NEURON_LAYER_STYLE)
         layer_style = choose_style_by_layertype(node.type)
-        node_label = self.get_layer_label(node, rankdir, options['verbose'])
+        node_label = self.get_layer_label(node, rankdir, options['node_label'])
         self.pydot_nodes[node.name] = pydot.Node(node_label, **layer_style)
 
     def add_pydot_edge(self, edge, tplgy):
@@ -190,17 +195,31 @@ class PngPrinter(object):
                                 'label': edge_label})
 
     @staticmethod
-    def filter_relu_node(node, tplgy):
-        if node.type == "ReLU":
-            incoming_edges = tplgy.find_incoming_edges(node)
-            outgoing_edges = tplgy.find_outgoing_edges(node)
-            for incoming_edge in incoming_edges:
-                src = incoming_edge.src_node
-                src.name += "  +  " + node.name + "\n"
-                for outgoing_edge in outgoing_edges:
-                    tplgy.add_edge(src, outgoing_edge.dst_node, incoming_edge.blob)
-                    #print("adding " + str(src) + "->" + str(outgoing_edge.dst_node))
-                tplgy.del_edge(incoming_edge)
+    def remove_dropout_node(node, tplgy):
+        if node.type != "Dropout":
+            return
+        incoming_edges = tplgy.find_incoming_edges(node)
+        outgoing_edges = tplgy.find_outgoing_edges(node)
+        for incoming_edge in incoming_edges:
+            src = incoming_edge.src_node
+            for outgoing_edge in outgoing_edges:
+                tplgy.add_edge(src, outgoing_edge.dst_node, incoming_edge.blob)
+                # print("adding " + str(src) + "->" + str(outgoing_edge.dst_node))
+            tplgy.del_edge(incoming_edge)
+
+    @staticmethod
+    def collapse_relu_node(node, tplgy):
+        if node.type != "ReLU":
+            return
+        incoming_edges = tplgy.find_incoming_edges(node)
+        outgoing_edges = tplgy.find_outgoing_edges(node)
+        for incoming_edge in incoming_edges:
+            src = incoming_edge.src_node
+            src.name += "  ==>  " + node.name
+            for outgoing_edge in outgoing_edges:
+                tplgy.add_edge(src, outgoing_edge.dst_node, incoming_edge.blob)
+                #print("adding " + str(src) + "->" + str(outgoing_edge.dst_node))
+            tplgy.del_edge(incoming_edge)
 
     def draw_net(self, caffe_net, rankdir, tplgy):
         pydot_graph = pydot.Dot(self.caffe_net.name if self.caffe_net.name else 'Net',
@@ -209,7 +228,9 @@ class PngPrinter(object):
 
         # optional: collapse ReLU nodes
         if options['collapse_relu']:
-            tplgy.traverse(lambda node: self.filter_relu_node(node, tplgy))
+            tplgy.traverse(lambda node: self.collapse_relu_node(node, tplgy))
+        if options['remove_dropout_node']:
+            tplgy.traverse(lambda node: self.remove_dropout_node(node, tplgy))
 
         tplgy.traverse(lambda node: self.add_pydot_node(node, tplgy, rankdir),
                        lambda edge: self.add_pydot_edge(edge, tplgy))
