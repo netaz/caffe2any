@@ -155,7 +155,7 @@ class PngPrinter(object):
                          node.kernel_size) + '/s=' + str(node.stride) + ' pad=' + str(node.pad)
             if node.ceiling:
                 node_label += ' ceiling'
-            node_label = '"%s%s(%s)"z' % (node_label, separator, node.type)
+            node_label = '"%s%s(%s)"' % (node_label, separator, node.type)
         else:
             node_label = None
         return node_label
