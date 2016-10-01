@@ -155,7 +155,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--printer', help='output printer (csv, console, png)', default='console')
     parser.add_argument('-d', '--display', type=str, help='display inventory,unique,output,bfs,mem')
-    parser.add_argument('-ph', '--phase', help='phase (TRAIN, TEST, ALL)', default='TEST')
     parser.add_argument('infile', help='input prototxt file')
     args = parser.parse_args()
 
