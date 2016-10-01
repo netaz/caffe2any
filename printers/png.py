@@ -164,9 +164,6 @@ class PngPrinter(object):
                       node.pad)
         return node_label
 
-    def merge_nodes(self, src_node, dst_node):
-        self.nodes_to_merge[src_node] = {dst_node}
-
     def add_pydot_node(self, node, tplgy, rankdir):
         #node_name = "%s_%s" % (node.name, node.type)
         #self.pydot_nodes[node.name] = pydot.Node(node.name,
