@@ -1,6 +1,4 @@
 from __future__ import print_function
-import caffe_pb2 as caffe
-
 from globals import get_pooling_types_dict
 
 """
@@ -18,6 +16,7 @@ options = {
     'collapse_relu': True,
     'verbose': True,
     'label_edges': True,
+    'rankdir': 'LR',  # {'LR', 'TB', 'BT'}
 }
 
 # Themes
@@ -37,7 +36,6 @@ CAFFE_THEME = {
     'InnerProduct': {'shape': 'record',
                      'fillcolor': '#CC33FF',
                      'style': 'filled'},
-
 }
 
 SOFT_THEME = {
@@ -62,7 +60,7 @@ SOFT_THEME = {
                       'style': 'filled'}
 }
 
-#theme = CAFFE_THEME
+# theme = CAFFE_THEME
 theme = SOFT_THEME
 
 
@@ -80,7 +78,7 @@ class PngPrinter(object):
     """The printer prints to PNG files"""
 
     def __init__(self, args, net):
-        self.output_image_file = filename = args.infile + '.png'
+        self.output_image_file = args.infile + '.png'
         self.caffe_net = net
         self.pydot_nodes = {}
         self.pydot_edges = []
@@ -102,7 +100,7 @@ class PngPrinter(object):
             A label for the current layer
         """
 
-        if verbose==False:
+        if verbose is False:
             return layer.name
 
         if rankdir in ('TB', 'BT'):
@@ -128,7 +126,7 @@ class PngPrinter(object):
                           separator,
                           layer.pad)
         elif layer.type == 'Pooling':
-            #pooling_types_dict = get_pooling_types_dict()
+            # pooling_types_dict = get_pooling_types_dict()
             node_label = self.print_pool(layer, separator)
             """
             node_label = '"%s%s(%s %s)%skernel size: %d%sstride: %d%spad: %d"' %\
@@ -149,12 +147,12 @@ class PngPrinter(object):
 
 
     def print_pool(self, node, separator):
-        #optional: compact/verbose
-#        desc = pooling_type[node.pool_type] + ', k=' + str(node.kernel_size) + 'x' + str(
-#            node.kernel_size) + '/s=' + str(node.stride) + ' pad=' + str(node.pad)
-#        if node.ceiling:
-#            desc += ' ceiling'
-#        return '"%s%s(%s)"' % (desc, separator, 'Pooling')
+        # optional: compact/verbose
+        # desc = pooling_type[node.pool_type] + ', k=' + str(node.kernel_size) + 'x' + str(
+        # node.kernel_size) + '/s=' + str(node.stride) + ' pad=' + str(node.pad)
+        # if node.ceiling:
+        #   desc += ' ceiling'
+        # return '"%s%s(%s)"' % (desc, separator, 'Pooling')
         pooling_types_dict = get_pooling_types_dict()
         node_label = '"%s%s(%s %s)%skernel size: %d%sstride: %d%spad: %d"' % \
                      (node.name,
@@ -170,8 +168,8 @@ class PngPrinter(object):
         return node_label
 
     def add_pydot_node(self, node, tplgy, rankdir):
-        #node_name = "%s_%s" % (node.name, node.type)
-        #self.pydot_nodes[node.name] = pydot.Node(node.name,
+        # node_name = "%s_%s" % (node.name, node.type)
+        # self.pydot_nodes[node.name] = pydot.Node(node.name,
                                     #    **NEURON_LAYER_STYLE)
         layer_style = choose_style_by_layertype(node.type)
         node_label = self.get_layer_label(node, rankdir, options['verbose'])
@@ -191,7 +189,8 @@ class PngPrinter(object):
                                 'dst': edge.dst_node.name,
                                 'label': edge_label})
 
-    def filter_relu_node(self, node, tplgy):
+    @staticmethod
+    def filter_relu_node(node, tplgy):
         if node.type == "ReLU":
             incoming_edges = tplgy.find_incoming_edges(node)
             outgoing_edges = tplgy.find_outgoing_edges(node)
@@ -215,7 +214,6 @@ class PngPrinter(object):
         tplgy.traverse(lambda node: self.add_pydot_node(node, tplgy, rankdir),
                        lambda edge: self.add_pydot_edge(edge, tplgy))
 
-
         # add the nodes and edges to the graph.
         for node in self.pydot_nodes.values():
             pydot_graph.add_node(node)
@@ -230,9 +228,5 @@ class PngPrinter(object):
         return pydot_graph.create_png()
 
     def print_bfs(self, tplgy):
-        self.done_blobs = []
-
-        rankdir = 'TB'  # {'LR', 'TB', 'BT'}
-
         with open(self.output_image_file, 'wb') as fid:
-            fid.write(self.draw_net(self.caffe_net, rankdir, tplgy))
+            fid.write(self.draw_net(self.caffe_net, options['rankdir'], tplgy))
