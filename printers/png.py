@@ -16,7 +16,7 @@ options = {
     'collapse_relu': True,
     'remove_dropout': True,
     'verbose': True,
-    'node_label': 'custom   ', # {'custom', 'caffe', 'minimal'}
+    'node_label': 'custom', # {'custom', 'caffe', 'minimal'}
     'label_edges': True,
     'rankdir': 'LR',  # {'LR', 'TB', 'BT'}
 }
