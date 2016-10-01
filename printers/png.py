@@ -13,54 +13,59 @@ try:
 except ImportError:
     import pydot
 
-# Themes
+# options
+options = {
+    'collapse_relu': True,
+    'verbose': True,
+    'label_edges': True,
+}
 
+# Themes
 CAFFE_THEME = {
     'layer_default': {'shape': 'record',
-                    'fillcolor': '#6495ED',
-                    'style': 'filled'},
+                      'fillcolor': '#6495ED',
+                      'style': 'filled'},
 
-    'Convolution': {'shape': 'record',
-                    'fillcolor': '#FF5050',
-                    'style': 'filled'},
+    'Convolution':  {'shape': 'record',
+                     'fillcolor': '#FF5050',
+                     'style': 'filled'},
 
-    'Pooling': {'shape': 'record',
-                'fillcolor': '#FF9900',
-                'style': 'filled'},
+    'Pooling':      {'shape': 'record',
+                     'fillcolor': '#FF9900',
+                     'style': 'filled'},
 
     'InnerProduct': {'shape': 'record',
-                'fillcolor': '#CC33FF',
-                'style': 'filled'},
+                     'fillcolor': '#CC33FF',
+                     'style': 'filled'},
 
 }
 
 SOFT_THEME = {
     'layer_default': {'shape': 'record',
-                    'fillcolor': '#6495ED',
-                    'style': 'rounded, filled'},
+                      'fillcolor': '#6495ED',
+                      'style': 'rounded, filled'},
 
-    'Convolution': {'shape': 'record',
-                    'fillcolor': '#FF5050',
-                    'style': 'rounded, filled'},
+    'Convolution':   {'shape': 'record',
+                      'fillcolor': '#FF5050',
+                      'style': 'rounded, filled'},
 
-    'Pooling': {'shape': 'record',
-                'fillcolor': '#FF9900',
-                'style': 'rounded, filled'},
+    'Pooling':       {'shape': 'record',
+                      'fillcolor': '#FF9900',
+                      'style': 'rounded, filled'},
 
-    'InnerProduct': {'shape': 'record',
-                     'fillcolor': '#CC33FF',
-                     'style': 'rounded, filled'},
+    'InnerProduct':  {'shape': 'record',
+                      'fillcolor': '#CC33FF',
+                      'style': 'rounded, filled'},
 
-    'Concat':       {'shape': 'box3d',
-                     'fillcolor': 'gray',
-                     'style': 'filled'}
+    'Concat':        {'shape': 'box3d',
+                      'fillcolor': 'gray',
+                      'style': 'filled'}
 }
 
 #theme = CAFFE_THEME
 theme = SOFT_THEME
 
 
-# optional - caffe color scheme
 def choose_style_by_layertype(layertype):
     try:
         layer_style = theme[layertype]
@@ -168,18 +173,15 @@ class PngPrinter(object):
         #node_name = "%s_%s" % (node.name, node.type)
         #self.pydot_nodes[node.name] = pydot.Node(node.name,
                                     #    **NEURON_LAYER_STYLE)
-        #optional
         layer_style = choose_style_by_layertype(node.type)
-        # optional: verbosity
-        node_label = self.get_layer_label(node, rankdir, verbose=True)
+        node_label = self.get_layer_label(node, rankdir, options['verbose'])
         self.pydot_nodes[node.name] = pydot.Node(node_label, **layer_style)
 
     def add_pydot_edge(self, edge, tplgy):
         if (edge.src_node is None) or (edge.dst_node is None):
             return
-        #optional
-        label_edges = True
-        if label_edges and edge.blob != None:
+
+        if options['label_edges'] and edge.blob != None:
             edge_label = str(edge.blob.shape) #get_edge_label(edge.src_node)
         else:
             edge_label = '""'
@@ -207,8 +209,7 @@ class PngPrinter(object):
                                 rankdir=rankdir)
 
         # optional: collapse ReLU nodes
-        collapse_relu = True
-        if collapse_relu:
+        if options['collapse_relu']:
             tplgy.traverse(lambda node: self.filter_relu_node(node, tplgy))
 
         tplgy.traverse(lambda node: self.add_pydot_node(node, tplgy, rankdir),
