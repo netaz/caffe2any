@@ -219,6 +219,12 @@ class Topology:
         debug('created:' + str(new_edge))
         return new_edge
 
+    def del_edge(self, edge_to_del):
+        for edge in self.edges:
+            if edge == edge_to_del:
+                self.edges.remove(edge)
+                return
+
     def nodes_count(self):
         node_cnt = []
         self.traverse(lambda node: node_cnt.append(node.type))

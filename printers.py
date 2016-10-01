@@ -253,46 +253,65 @@ class PngPrinter:
     def __init__(self, args, net):
         self.output_image_file = filename = args.infile + '.png'
         self.caffe_net = net
+        self.pydot_nodes = {}
+        self.pydot_edges = []
+
         print('Drawing net to %s' % self.output_image_file)
 
+    def merge_nodes(self, src_node, dst_node):
+        self.nodes_to_merge[src_node] = {dst_node}
 
-    def draw_node(self, node, pydot_nodes, tplgy):
+    def add_node(self, node, tplgy):
         #node_name = "%s_%s" % (node.name, node.type)
-        pydot_nodes[node.name] = pydot.Node(node.name,
+        self.pydot_nodes[node.name] = pydot.Node(node.name,
                                         **NEURON_LAYER_STYLE)
 
-    def draw_edge(self, edge, pydot_edges, tplgy):
+    def add_edge(self, edge, tplgy):
         edge_label = '""'
-#        print(edge.src_node.name)
-        #src_name = edge.src_node.name if edge.src_node else ''
-        #dst_name = edge.dst_node.name if edge.dst_node else ''
 
         if (edge.src_node is None) or (edge.dst_node is None):
             return
-        pydot_edges.append({'src': edge.src_node.name,
-                            'dst': edge.dst_node.name,
-                            'label': edge_label})
+
+        src_name = edge.src_node.name
+        self.pydot_edges.append({'src': src_name,
+                                'dst': edge.dst_node.name,
+                                'label': edge_label})
+
+    def filter_relu_node(self, node, tplgy):
+        if node.type == "ReLU":
+            incoming_edges = tplgy.find_incoming_edges(node)
+            outgoing_edges = tplgy.find_outgoing_edges(node)
+            for incoming_edge in incoming_edges:
+                src = incoming_edge.src_node
+                src.name += "\n" + node.name
+                #tplgy.del_edge(edge)
+                for outgoing_edge in outgoing_edges:
+                    tplgy.add_edge(src, outgoing_edge.dst_node, None)
+                    print("adding " + str(src) + "->" + str(outgoing_edge.dst_node))
+                tplgy.del_edge(incoming_edge)
 
     def draw_net(self, caffe_net, rankdir, tplgy):
         pydot_graph = pydot.Dot(self.caffe_net.name if self.caffe_net.name else 'Net',
                                 graph_type='digraph',
                                 rankdir=rankdir)
-        pydot_nodes = {}
-        pydot_edges = []
 
-        tplgy.traverse(lambda node: self.draw_node(node, pydot_nodes, tplgy),
-                       lambda edge: self.draw_edge(edge, pydot_edges, tplgy))
+        tplgy.traverse(lambda node: self.filter_relu_node(node, tplgy))
 
-        # Now, add the nodes and edges to the graph.
-        for node in pydot_nodes.values():
+        tplgy.traverse(lambda node: self.add_node(node, tplgy),
+                       lambda edge: self.add_edge(edge, tplgy))
+
+
+        # add the nodes and edges to the graph.
+        for node in self.pydot_nodes.values():
             pydot_graph.add_node(node)
-        for edge in pydot_edges:
+
+        for edge in self.pydot_edges:
             pydot_graph.add_edge(
-                pydot.Edge(pydot_nodes[edge['src']],
-                           pydot_nodes[edge['dst']],
+                pydot.Edge(self.pydot_nodes[edge['src']],
+                           self.pydot_nodes[edge['dst']],
                            label=edge['label']))
 
-        print("number of nodes:", len(pydot_nodes))
+        print("number of nodes:", len(self.pydot_nodes))
         return pydot_graph.create_png()
 
     def print_bfs(self, tplgy):
