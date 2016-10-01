@@ -258,17 +258,23 @@ def get_pooling_types_dict():
     return d
 
 # optional - caffe color scheme
-def choose_color_by_layertype(layertype):
-    """Define colors for nodes based on the layer type.
-    """
-    color = '#6495ED'  # Default
+def choose_style_by_layertype(layertype):
+    layer_style = LAYER_STYLE_DEFAULT
+    layer_style['fillcolor'] = '#6495ED'  # Default
     if layertype == 'Convolution' or layertype == 'Deconvolution':
-        color = '#FF5050'
+        layer_style['fillcolor'] = '#FF5050'
     elif layertype == 'Pooling':
-        color = '#FF9900'
+        layer_style['fillcolor'] = '#FF9900'
+        #layer_style['shape'] = 'invtrapezium'
     elif layertype == 'InnerProduct':
-        color = '#CC33FF'
-    return color
+        layer_style['fillcolor'] = '#CC33FF'
+
+    if layertype == "Concat":
+        layer_style = {'shape': 'box3d',
+                       'fillcolor': 'gray',
+                       'style': 'filled'}
+
+    return layer_style
 
 
 class PngPrinter:
@@ -371,8 +377,8 @@ class PngPrinter:
         #node_name = "%s_%s" % (node.name, node.type)
         #self.pydot_nodes[node.name] = pydot.Node(node.name,
                                     #    **NEURON_LAYER_STYLE)
-        layer_style = LAYER_STYLE_DEFAULT
-        layer_style['fillcolor'] = choose_color_by_layertype(node.type)
+        #optional
+        layer_style = choose_style_by_layertype(node.type)
         # optional: verbosity
         node_label = self.get_layer_label(node, rankdir, verbose=True)
         self.pydot_nodes[node.name] = pydot.Node(node_label, **layer_style)
