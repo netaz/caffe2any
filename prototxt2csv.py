@@ -115,7 +115,6 @@ def update_blobs_size(tplgy, node):
                 representative_in_edge_shape = in_edge.blob.shape
             else:
                 return False
-
         if representative_in_edge_shape != None:
             for out_edge in out_edges:
                 out_edge.blob.shape = copy.deepcopy(representative_in_edge_shape)
@@ -145,10 +144,11 @@ def update_blobs_size(tplgy, node):
         assert len(in_edges)==1, node.name
         if in_edges[0].blob.shape != None:
             out_edges[0].blob.shape = in_edges[0].blob.shape
-
+    elif node.type == 'Reshape':
+        assert len(in_edges) == 1 and len(out_edges) == 1, node.name
+        out_edges[0].blob.shape = node.transform_ifm(in_edges[0].blob.shape)
     else:
         assert len(in_edges)==1 and len(out_edges)==1, node.name
-        #print(in_edges[0].blob.shape)
         if in_edges[0].blob.shape != None:
             out_edges[0].blob.shape = in_edges[0].blob.shape
 

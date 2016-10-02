@@ -138,6 +138,29 @@ class LRNNode(Node):
         return (self.norm_region, self.alpha, self.beta, self.local_size) == (
         other.norm_region, other.alpha, other.beta, other.local_size)
 
+class ReshapeNode(Node):
+    def __init__(self, name, type, layer):
+        Node.__init__(self, name, type, 'Modifier')
+        param = layer.reshape_param
+        self.reshape_param = param.shape
+
+    def transform_ifm(self, ifm_shape):
+        ofm_shape = copy.deepcopy(ifm_shape)
+        # Calculate the IFM size; to be used to calculate the inferred dimension
+        ifm_size = ifm_shape[0] * ifm_shape[1] * ifm_shape[2] * ifm_shape[3]
+        infer = -1 # the index of the inferred dimension
+        for i in xrange(4):
+            if self.reshape_param.dim[i] > 0:
+                ofm_shape[i] = self.reshape_param.dim[i]
+                ifm_size /= ofm_shape[i]
+            elif self.reshape_param.dim[i] == 0:
+                ofm_shape[i] = ifm_shape[i]
+                ifm_size /= ofm_shape[i]
+            elif self.reshape_param.dim[i] == -1:
+                infer = i
+            if infer>0:
+                ofm_shape[infer] = ifm_size
+        return ofm_shape
 
 def node_factory(name, type, layer, role):
     if type == "Pooling":
@@ -150,6 +173,8 @@ def node_factory(name, type, layer, role):
         new_node = LRNNode(name, type, layer)
     elif type == "Deconvolution":
         new_node = DeconvolutionNode(name, type, layer)
+    elif type == "Reshape":
+        new_node = ReshapeNode(name, type, layer)
     else:
         new_node = Node(name, type, role)
     return new_node
@@ -366,3 +391,4 @@ def parse_caffe_net(caffe_net):
         graph.add_edge(src=blob.producer, dst=None, blob=blob)
 
     return graph
+

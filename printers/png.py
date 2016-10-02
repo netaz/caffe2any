@@ -120,6 +120,8 @@ class PngPrinter(object):
             node_label = self.print_pool(layer, separator, options['node_label'])
         elif layer.type == 'LRN':
             node_label = self.print_lrn(layer, separator, options['node_label'])
+        elif layer.type == 'Reshape':
+            node_label = self.print_reshape(layer, separator, options['node_label'])
         else:
             node_label = '"%s%s(%s)"' % (layer.name, separator, layer.type)
         # print (node_label)
@@ -167,6 +169,17 @@ class PngPrinter(object):
             node_label = node.name + separator + lrn_type[node.norm_region] + \
                           ' size=' + str(node.local_size) + ' alpha=' + str(
                           node.alpha) + ' beta=' + str(node.beta)
+            node_label = '"%s%s(%s)"' % (node_label, separator, node.type)
+        else:
+            node_label = None
+        return node_label
+
+    def print_reshape(self, node, separator, format):
+        if format == 'caffe':
+            node_label = node.name
+        elif format == 'custom':
+            node_label = '%s%s[%s,%s,%s,%s]' % \
+                         (node.name, separator, node.reshape_param.dim[0], node.reshape_param.dim[1], node.reshape_param.dim[2], node.reshape_param.dim[3])
             node_label = '"%s%s(%s)"' % (node_label, separator, node.type)
         else:
             node_label = None
