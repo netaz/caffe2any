@@ -13,11 +13,16 @@ except ImportError:
 
 # options
 options = {
+    # Collapses ReLU into the preceding layer. This makes for a more compact and readable graph.
     'collapse_relu': True,
+    # For Test/Inference networks, Dropout nodes are not interesting and can be removed for readability
     'remove_dropout': True,
     'verbose': True,
+    # The node label refers to the text that is inside each node in the graph
     'node_label': 'custom', # {'custom', 'caffe', 'minimal'}
+    # Annotate the edges with the BLOB sizes
     'label_edges': True,
+    # Graph drawing direction: left-right, top-bottom, bottom-top
     'rankdir': 'LR',  # {'LR', 'TB', 'BT'}
 }
 
@@ -59,7 +64,11 @@ SOFT_THEME = {
 
     'Concat':        {'shape': 'box3d',
                       'fillcolor': 'gray',
-                      'style': 'filled'}
+                      'style': 'filled'},
+
+    'Softmax':        {'shape': 'record',
+                      'fillcolor': 'yellow',
+                      'style': 'rounded, filled'},
 }
 
 # theme = CAFFE_THEME
@@ -114,17 +123,18 @@ class PngPrinter(object):
             # horizontal space is not; separate words with newlines
             separator = '\\n'
 
-        if layer.type == 'Convolution' or layer.type == 'Deconvolution':
-            node_label = self.print_conv(layer, separator, options['node_label'])
-        elif layer.type == 'Pooling':
-            node_label = self.print_pool(layer, separator, options['node_label'])
-        elif layer.type == 'LRN':
-            node_label = self.print_lrn(layer, separator, options['node_label'])
-        elif layer.type == 'Reshape':
-            node_label = self.print_reshape(layer, separator, options['node_label'])
-        else:
+        layers = {
+            'Convolution': self.print_conv,
+            'Deconvolution': self.print_conv,
+            'Pooling': self.print_pool,
+            'LRN': self.print_lrn,
+            'Reshape': self.print_reshape,
+        }
+        printer = layers.get(layer.type, None)
+        if printer is None:
             node_label = '"%s%s(%s)"' % (layer.name, separator, layer.type)
-        # print (node_label)
+        else:
+            node_label = printer(layer, separator, options['node_label'])
         return node_label
 
     def print_conv(self, node, separator, format):

@@ -151,28 +151,21 @@ class ReshapeNode(Node):
         infer = -1 # the index of the inferred dimension
         for i in xrange(4):
             if self.reshape_param.dim[i] > 0:
-                """
-                Positive numbers are used directly, setting the corresponding dimension
-                of the output blob. In addition, two special values are accepted for any
-                of the target dimension values:
-                """
+                # Positive numbers are used directly, setting the corresponding dimension
+                # of the output blob. In addition, two special values are accepted for any
+                # of the target dimension values:
                 ofm_shape[i] = self.reshape_param.dim[i]
                 ifm_size /= ofm_shape[i]
             elif self.reshape_param.dim[i] == 0:
-                """
-                0 means “copy the respective dimension of the bottom layer”. That is,
-                if the bottom has 2 as its 1st dimension, the top will have 2 as its
-                1st dimension as well, given dim: 0 as the 1st target dimension.
-                """
+                # 0 means 'copy the respective dimension of the bottom layer'. That is,
+                # if the bottom has 2 as its 1st dimension, the top will have 2 as its
+                # 1st dimension as well, given dim: 0 as the 1st target dimension.
                 ofm_shape[i] = ifm_shape[i]
                 ifm_size /= ofm_shape[i]
             elif self.reshape_param.dim[i] == -1:
-                """
-                -1 stands for “infer this from the other dimensions”. This behavior is
-                similar to that of -1 in numpy’s or [] for MATLAB’s reshape: this
-                dimension is calculated to keep the overall element count the same as in
-                the bottom layer. At most one -1 can be used in a reshape operation.
-                """
+                # -1 stands for 'infer this from the other dimensions'. This
+                # dimension is calculated to keep the overall element count the same as in
+                # the bottom layer. At most one -1 can be used in a reshape operation.
                 infer = i
             if infer>0:
                 ofm_shape[infer] = ifm_size
