@@ -91,7 +91,7 @@ def update_blobs_size(tplgy, node):
     in_edges = tplgy.find_incoming_edges(node)
     out_edges = tplgy.find_outgoing_edges(node)
     if node.type == 'Convolution':
-        assert len(in_edges)==1 and len(out_edges)==1, node.name
+        assert len(in_edges)==1 and len(out_edges)==1, (node.name, len(in_edges), len(out_edges), str(out_edges[0]))
         if in_edges[0].blob.shape != None:
             out_edges[0].blob.shape = node.transform_ifm(in_edges[0].blob.shape)
     elif node.type == 'InnerProduct':
@@ -137,6 +137,8 @@ def update_blobs_size(tplgy, node):
         if in_edges[0].blob.shape != None:
             out_edges[0].blob.shape = in_edges[0].blob.shape
     elif node.type == 'Python':
+        pass # Don't know how to handle this
+    elif node.type == 'Crop':
         pass # Don't know how to handle this
     elif node.type == 'Input':
         assert len(out_edges)==1, node.name

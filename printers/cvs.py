@@ -83,24 +83,20 @@ class CsvPrinter:
         else:
             return ''
 
-    def print_MACs(self, node, ofms_descriptor, tplgy):
+    def get_MACs(self, node, ofms_descriptor, tplgy):
         if node.type in ['Convolution']:
             edges = tplgy.find_incoming_edges(node)
             assert (len(edges) == 1)
-
             num_ifms = edges[0].blob.shape[1]
-
-            # macs = #OFMs*OFM_X*OFM_Y*#IFMs*K_X*K_Y
-            num_ofms = ofms_descriptor[1]
-            ofm_x = ofms_descriptor[2]
-            ofm_y = ofms_descriptor[3]
-            MACs = num_ofms * ofm_x * ofm_y * num_ifms * node.kernel_size * node.kernel_size
-            return str(MACs)
+            return node.get_MACs(ofms_descriptor, num_ifms)
         elif node.type in ['InnerProduct']:
-            return str(self.get_weight_size(node, tplgy))
+            return self.get_weight_size(node, tplgy)
         else:
-            return ''
+            return node.get_MACs()
 
+    def get_MACs_to_BW(self, node, ofms_descriptor, tplgy):
+        pass
+        
     def print_inventory(self, tplgy):
         node_types_cnt = self.count_nodes(tplgy)
 
@@ -146,5 +142,6 @@ class CsvPrinter:
             str(ofm_size) + ',' +  # OFM size - pixels
             str(self.get_weight_size(edge.src_node, tplgy)) + ',' +  # Weights size - pixels
             str(self.get_bias_size(edge.src_node, tplgy)) + ',' +  # Bias size - pixels
-            self.print_MACs(edge.src_node, edge.blob.shape, tplgy) + ',' +  # MACs
+            str(self.get_MACs(edge.src_node, edge.blob.shape, tplgy)) + ',' +  # MACs
+            #str(self.get_MACs_to_BW(edge.src_node, edge.blob.shape, tplgy)) + ',' +  # MACs to BW ratio
             '\n')

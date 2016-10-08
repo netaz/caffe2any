@@ -40,6 +40,8 @@ class Node:
     def is_same(this, other):
         return True
 
+    def get_MACs(self): 
+        return 0
 
 class PoolingNode(Node):
     def __init__(self, name, type, layer):
@@ -94,6 +96,13 @@ class ConvolutionNode(Node):
         debug_tr(str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
+    def get_MACs(self, ofms_descriptor, num_ifms): 
+        # macs = #OFMs*OFM_X*OFM_Y*#IFMs*K_X*K_Y
+        num_ofms = ofms_descriptor[1]
+        ofm_x = ofms_descriptor[2]
+        ofm_y = ofms_descriptor[3]
+        MACs = num_ofms * ofm_x * ofm_y * num_ifms * self.kernel_size * self.kernel_size
+        return MACs
 
 class DeconvolutionNode(Node):
     def __init__(self, name, type, layer):
