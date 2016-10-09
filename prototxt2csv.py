@@ -21,7 +21,7 @@ from collections import deque, Counter
 import caffe_pb2 as caffe
 from google.protobuf import text_format
 from printers.png import PngPrinter
-from printers import cvs, console
+from printers import csv, console
 import topology
 import copy
 
@@ -182,7 +182,7 @@ def main():
     elif args.printer == 'png':
         printer = PngPrinter(args, net)
     else:
-        printer = cvs.CsvPrinter(args.infile + '.csv')
+        printer = csv.CsvPrinter(args.infile + '.csv')
 
     if args.display != None:
         for disp_opt in args.display.split(','):

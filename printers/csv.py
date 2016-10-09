@@ -6,6 +6,8 @@ class CsvPrinter:
 
     def __init__(self, fname):
         self.file = open(fname, "wt")
+        self.cols = ['Node', 'Type', 'Node Details', 'IFMz', 'IFMy', 'IFMx', 'OFMz', 'OFMy', 'OFMx',
+                     'IFM Size (pixels)', 'OFM Size (pixels)', 'Weights Size(pixels)', 'Bias Size(pixels)', 'MACs']
 
     def print_pool(self, node):
         desc = "Pool," + pooling_type[node.pool_type] + ' k=' + str(node.kernel_size) + "x" + str(
@@ -117,8 +119,8 @@ class CsvPrinter:
         self.file.write('\n')
 
     def print_bfs(self, tplgy):
-        self.file.write(
-            'Node, Type, Node Details,IFMz,IFMy,IFMx,OFMz,OFMy,OFMx, IFM Size (pixels), OFM Size (pixels), Weights Size(pixels), Bias Size(pixels), MACs\n')
+        self.file.write(', '.join(self.cols))
+        self.file.write('\n')
         self.done_blobs = []
         tplgy.traverse(None, lambda edge: self.print_edge_cb(edge, tplgy))
 
@@ -131,17 +133,26 @@ class CsvPrinter:
         if edge.blob.shape and edge.src_node.role != "Modifier":
             ofm_size = edge.blob.size()
 
-        self.file.write(
-            (edge.src_node.name if edge.src_node else '') + ',' +  # Node name
-            (str(self.print_layer(edge.src_node)) if edge.src_node else ',') + ',' +  # Layer type, details
-            self.print_ifms(edge.src_node, tplgy) + ',' +  # IFM
-            (str(edge.blob.shape[1]) if edge.blob.shape else '') + ',' +  # OFMz
-            (str(edge.blob.shape[2]) if edge.blob.shape else '') + ',' +  # OFMy
-            (str(edge.blob.shape[3]) if edge.blob.shape else '') + ',' +  # OFMx
-            str(self.get_ifm_size(edge.src_node, tplgy)) + ',' +  # IFM size - pixels
-            str(ofm_size) + ',' +  # OFM size - pixels
-            str(self.get_weight_size(edge.src_node, tplgy)) + ',' +  # Weights size - pixels
-            str(self.get_bias_size(edge.src_node, tplgy)) + ',' +  # Bias size - pixels
-            str(self.get_MACs(edge.src_node, edge.blob.shape, tplgy)) + ',' +  # MACs
-            #str(self.get_MACs_to_BW(edge.src_node, edge.blob.shape, tplgy)) + ',' +  # MACs to BW ratio
-            '\n')
+        col_printer = {
+         #   'Node, Type, Node Details,IFMz,IFMy,IFMx,OFMz,OFMy,OFMx, '
+         #   'IFM Size (pixels), OFM Size (pixels), Weights Size(pixels), Bias Size(pixels), MACs'
+            'Node': (edge.src_node.name if edge.src_node else ''),
+            'Type': (str(self.print_layer(edge.src_node)) if edge.src_node else ','),
+            'Node Details': '#', #'(edge.src_node.type if edge.src_node else ''),
+            'IFMz': self.print_ifms(edge.src_node, tplgy),
+            'IFMy': '#',
+            'IFMx': '#',
+            'OFMz': (str(edge.blob.shape[1]) if edge.blob.shape else ''), # OFMz
+            'OFMy': (str(edge.blob.shape[2]) if edge.blob.shape else ''),  # OFMy
+            'OFMx': (str(edge.blob.shape[3]) if edge.blob.shape else ''),  # OFMx
+            'IFM Size (pixels)': str(self.get_ifm_size(edge.src_node, tplgy)),
+            'OFM Size (pixels)': str(ofm_size),  # OFM size - pixels
+            'Weights Size(pixels)': str(self.get_weight_size(edge.src_node, tplgy)),
+            'Bias Size(pixels)': str(self.get_bias_size(edge.src_node, tplgy)),
+            'MACs': str(self.get_MACs(edge.src_node, edge.blob.shape, tplgy)),
+        }
+
+        for col in self.cols:
+            if col_printer[col]!='#':
+                self.file.write(col_printer[col] + ',' )
+        self.file.write('\n');
