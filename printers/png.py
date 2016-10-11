@@ -195,6 +195,22 @@ class PngPrinter(object):
             node_label = None
         return node_label
 
+    """
+    def print_eltwise(selfself, node):
+        op_lookup = get_eltwise_op_dict()
+        return 'Eltwise,' + op_lookup[node.operation]
+
+        if format == 'caffe':
+            node_label = node.name
+        elif format == 'custom':
+            node_label = '%s%s[%s,%s,%s,%s]' % \
+                         (node.name, separator, node.reshape_param.dim[0], node.reshape_param.dim[1],
+                          node.reshape_param.dim[2], node.reshape_param.dim[3])
+            node_label = '"%s%s(%s)"' % (node_label, separator, node.type)
+        else:
+            node_label = None
+        return node_label
+    """
     def add_pydot_node(self, node, tplgy, rankdir):
         # node_name = "%s_%s" % (node.name, node.type)
         # self.pydot_nodes[node.name] = pydot.Node(node.name,

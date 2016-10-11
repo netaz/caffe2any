@@ -126,7 +126,10 @@ def update_blobs_size(tplgy, node):
 
             for out_edge in out_edges:
                 out_edge.blob.shape[1] = ch_dim_size
-
+    elif node.type == 'Deconvolution':
+        assert len(in_edges) == 1 and len(out_edges) == 1, (node.name, len(in_edges), len(out_edges), str(out_edges[0]))
+        if in_edges[0].blob.shape != None:
+            out_edges[0].blob.shape = node.transform_ifm(in_edges[0].blob.shape)
     elif node.type == 'ROIPooling':
         assert len(in_edges)==2 and len(out_edges)==1, node.name
         #print(in_edges[0].blob.shape)
@@ -134,8 +137,9 @@ def update_blobs_size(tplgy, node):
             out_edges[0].blob.shape = in_edges[0].blob.shape
     elif node.type == 'Eltwise':
         assert len(in_edges)==2 and len(out_edges)==1, node.name
-        if in_edges[0].blob.shape != None:
-            out_edges[0].blob.shape = in_edges[0].blob.shape
+        #if in_edges[0].blob.shape != None:
+        # NETA: second edge was not evaluated yet
+        out_edges[0].blob.shape = in_edges[0].blob.shape
     elif node.type == 'Python':
         pass # Don't know how to handle this
     elif node.type == 'Crop':

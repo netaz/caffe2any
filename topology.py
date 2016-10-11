@@ -118,6 +118,18 @@ class DeconvolutionNode(Node):
             return False
         return (self.kernel_size, self.stride, self.pad) == (other.kernel_size, other.stride, other.pad)
 
+    def transform_ifm(self, ifm_shape):
+        ofm_shape = copy.deepcopy(ifm_shape)
+        ofm_shape[1] = self.num_output
+        ifmh = ifm_shape[2]
+        # s*(W-1) + k - 2*P
+        #ofmh = (ifmh - self.kernel_size + 2.0 * self.pad) / self.stride + 1
+        ofmh = self.stride * (ifmh-1) + self.kernel_size - 2 * self.pad
+        ofm_shape[2] = int(ofmh)
+        ofm_shape[3] = int(ofmh)
+        debug_tr(str(ifm_shape) + '--> ' + str(ofm_shape))
+        return ofm_shape
+
 
 class InnerProductNode(Node):
     def __init__(self, name, type, layer):
@@ -180,6 +192,11 @@ class ReshapeNode(Node):
                 ofm_shape[infer] = ifm_size
         return ofm_shape
 
+class EltwiseNode(Node):
+    def __init__(self, name, type, layer):
+        Node.__init__(self, name, type, 'Producer')
+        self.operation = layer.eltwise_param.operation
+
 def node_factory(name, type, layer, role):
     if type == "Pooling":
         new_node = PoolingNode(name, type, layer)
@@ -193,6 +210,8 @@ def node_factory(name, type, layer, role):
         new_node = DeconvolutionNode(name, type, layer)
     elif type == "Reshape":
         new_node = ReshapeNode(name, type, layer)
+    elif type == "Eltwise":
+        new_node = EltwiseNode(name, type, layer)
     else:
         new_node = Node(name, type, role)
     return new_node
@@ -319,15 +338,30 @@ class Topology:
 
     def traverse(self, node_cb, edge_cb=None):
         """
-        BFS traversal of the topology graph
+        BFS (with modifications) traversal of the topology graph
         """
-        pending = deque([self.get_start_node()])
-        done = []
+        pending = deque([self.get_start_node()])    # The list of nodes waiting to be processed
+        done = []                                   # The list of nodes we've already processed
         while len(pending) > 0:
             node = pending.popleft()
-            done.append(node)
 
+            # This is a modification of BFS: we mandate that all incoming edges
+            # have been processed before processing the node to ensure processing order satisfies data dependency
+            """"""
+            if node_cb is None:# and edge_cb is not None:
+            #if True:
+                print('====================================================================')
+                incoming_edges = self.find_incoming_edges(node)
+                all_in_edges_were_processed = True
+                for edge in incoming_edges:
+                    if edge.src_node and edge.src_node not in done:
+                        all_in_edges_were_processed = False
+                if not all_in_edges_were_processed:
+                    continue
+            """"""
+            done.append(node)
             if node_cb != None:
+                # TODO: this can pboably be removed after adding the data-dependency constraint
                 # Node callback can indicate failure, in which case we try again later
                 cb_handled = node_cb(node)
                 if cb_handled == False:
@@ -336,7 +370,9 @@ class Topology:
 
             outgoing_edges = self.find_outgoing_edges(node)
             for edge in outgoing_edges:
+                # invoke the edge callback
                 if edge_cb != None: edge_cb(edge)
+                # add new nodes to visit
                 if (edge.dst_node != None) and (edge.dst_node not in done):
                     pending.append(edge.dst_node)
 
