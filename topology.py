@@ -325,7 +325,7 @@ class Topology:
                 if edge.blob.name == blob:
                     blob_has_consumer = True
                     continue
-            if not blob_has_consumer:
+            if blob_has_consumer is False:
                 blobs.append(blob)
         return blobs
 
@@ -356,7 +356,7 @@ class Topology:
                 for edge in incoming_edges:
                     if edge.src_node and edge.src_node not in done:
                         all_in_edges_were_processed = False
-                if not all_in_edges_were_processed:
+                if all_in_edges_were_processed is False:
                     continue
             """"""
             done.append(node)
@@ -364,7 +364,7 @@ class Topology:
                 # TODO: this can pboably be removed after adding the data-dependency constraint
                 # Node callback can indicate failure, in which case we try again later
                 cb_handled = node_cb(node)
-                if not cb_handled:
+                if cb_handled is False:
                     pending.append(node)
                     continue
 
