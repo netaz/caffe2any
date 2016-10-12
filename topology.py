@@ -325,7 +325,7 @@ class Topology:
                 if edge.blob.name == blob:
                     blob_has_consumer = True
                     continue
-            if blob_has_consumer == False:
+            if not blob_has_consumer:
                 blobs.append(blob)
         return blobs
 
@@ -360,20 +360,20 @@ class Topology:
                     continue
             """"""
             done.append(node)
-            if node_cb != None:
+            if node_cb is not None:
                 # TODO: this can pboably be removed after adding the data-dependency constraint
                 # Node callback can indicate failure, in which case we try again later
                 cb_handled = node_cb(node)
-                if cb_handled == False:
+                if not cb_handled:
                     pending.append(node)
                     continue
 
             outgoing_edges = self.find_outgoing_edges(node)
             for edge in outgoing_edges:
                 # invoke the edge callback
-                if edge_cb != None: edge_cb(edge)
+                if edge_cb is not None: edge_cb(edge)
                 # add new nodes to visit
-                if (edge.dst_node != None) and (edge.dst_node not in done):
+                if (edge.dst_node is not None) and (edge.dst_node not in done):
                     pending.append(edge.dst_node)
 
 
@@ -431,7 +431,7 @@ def parse_caffe_net(caffe_net):
 
             edge = graph.add_edge(src=blob.producer, dst=new_node, blob=blob)
 
-            # Add the BLOBs produced by this layer to the topology
+        # Add the BLOBs produced by this layer to the topology
         for caffe_top_blob in layer.top:
             if new_node.type == "Input":
                 graph.add_blob(caffe_top_blob, layer.input_param.shape[0].dim, producer=new_node)
