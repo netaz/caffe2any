@@ -269,6 +269,25 @@ class Topology:
         debug('created Node:' + name)
         return new_node
 
+    def del_node(self, node):
+        del self.nodes[node.name]
+        node.name = "jjjjjjjjjjjjjjjjjjjjjjjjjjjj"
+        #node.is_deleted = True
+
+    def del_node_by_type(self, node, type_to_remove):
+        if node.type != type_to_remove:
+            return
+
+        incoming_edges = self.find_incoming_edges(node)
+        outgoing_edges = self.find_outgoing_edges(node)
+        for incoming_edge in incoming_edges:
+            src = incoming_edge.src_node
+            for outgoing_edge in outgoing_edges:
+                self.add_edge(src, outgoing_edge.dst_node, incoming_edge.blob)
+                # self.del_edge(outgoing_edge)
+            self.del_edge(incoming_edge)
+        #self.del_node(node)
+
     def add_blob(self, name, shape, producer):
         new_blob = BLOB(name, shape, producer)
         self.blobs[name] = new_blob

@@ -235,6 +235,10 @@ class PngPrinter(object):
 
     @staticmethod
     def remove_dropout_node(node, tplgy):
+        tplgy.del_node_by_type(node, "Dropout")
+    """
+    @staticmethod
+    def remove_dropout_node(node, tplgy):
         if node.type != "Dropout":
             return
         incoming_edges = tplgy.find_incoming_edges(node)
@@ -245,7 +249,7 @@ class PngPrinter(object):
                 tplgy.add_edge(src, outgoing_edge.dst_node, incoming_edge.blob)
                 # print("adding " + str(src) + "->" + str(outgoing_edge.dst_node))
             tplgy.del_edge(incoming_edge)
-
+    """
     @staticmethod
     def collapse_relu_node(node, tplgy):
         if node.type != "ReLU":
