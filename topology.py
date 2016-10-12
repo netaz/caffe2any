@@ -284,9 +284,9 @@ class Topology:
             src = incoming_edge.src_node
             for outgoing_edge in outgoing_edges:
                 self.add_edge(src, outgoing_edge.dst_node, incoming_edge.blob)
-                # self.del_edge(outgoing_edge)
+                #self.del_edge(outgoing_edge)
             self.del_edge(incoming_edge)
-        #self.del_node(node)
+        self.del_node(node)
 
     def add_blob(self, name, shape, producer):
         new_blob = BLOB(name, shape, producer)
