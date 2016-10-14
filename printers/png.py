@@ -258,10 +258,11 @@ class PngPrinter(object):
         outgoing_edges = tplgy.find_outgoing_edges(node)
         for incoming_edge in incoming_edges:
             src = incoming_edge.src_node
-            src.name += "  ==>  " + node.name
+            src.name += "  ++  " + node.name
             for outgoing_edge in outgoing_edges:
                 tplgy.add_edge(src, outgoing_edge.dst_node, incoming_edge.blob)
                 #print("adding " + str(src) + "->" + str(outgoing_edge.dst_node))
+                tplgy.del_edge(outgoing_edge)
             tplgy.del_edge(incoming_edge)
 
     def draw_net(self, caffe_net, rankdir, tplgy):
@@ -272,9 +273,10 @@ class PngPrinter(object):
         # optional: collapse ReLU nodes
         if options['collapse_relu']:
             tplgy.traverse(lambda node: self.collapse_relu_node(node, tplgy))
+        tplgy.dump_edges()
         if options['remove_dropout']:
             tplgy.traverse(lambda node: self.remove_dropout_node(node, tplgy))
-
+        tplgy.dump_edges()
         tplgy.traverse(lambda node: self.add_pydot_node(node, tplgy, rankdir),
                        lambda edge: self.add_pydot_edge(edge, tplgy))
 

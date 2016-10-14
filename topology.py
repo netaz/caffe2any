@@ -11,7 +11,7 @@ import copy
 
 DEBUG = False
 DEBUG_TRANSFORM = False
-
+COUNT = 0
 
 def debug(str):
     if DEBUG:
@@ -28,6 +28,7 @@ class Node:
         self.name = name
         self.type = type
         self.role = role
+        self.is_deleted = False
 
     def __str__(self):
         return self.name + '(' + self.type + ')'
@@ -251,12 +252,15 @@ class Edge:
         self.src_node = src_node
         self.dst_node = dst_node
         self.blob = blob
+        self.is_deleted = False
 
     def __str__(self):
-        return ((self.src_node.name if self.src_node else 'None') + ' ==> ' +
+        desc = ((self.src_node.name if self.src_node else 'None') + ' ==> ' +
                 str(self.blob) + ' ==> ' +
                 (self.dst_node.name if self.dst_node else 'None') + ']')
-
+        if self.is_deleted:
+            desc += " IS DELETED!!"
+        return desc
 
 class Topology:
     def __init__(self):
@@ -268,6 +272,12 @@ class Topology:
         self.blobs = {}
         self.edges = []
 
+    def dump_edges(self):
+        print('Dumping edges')
+        print('-----------------------------------------')
+        for edge in self.edges:
+            print(str(edge))
+
     def add_node(self, name, type, layer, role):
         new_node = node_factory(name, type, layer, role)
         self.nodes[name] = new_node
@@ -275,9 +285,9 @@ class Topology:
         return new_node
 
     def del_node(self, node):
-        del self.nodes[node.name]
+        # del self.nodes[node.name]
         node.name = "jjjjjjjjjjjjjjjjjjjjjjjjjjjj"
-        #node.is_deleted = True
+        node.is_deleted = True
 
     def del_node_by_type(self, node, type_to_remove):
         if node.type != type_to_remove:
@@ -289,7 +299,7 @@ class Topology:
             src = incoming_edge.src_node
             for outgoing_edge in outgoing_edges:
                 self.add_edge(src, outgoing_edge.dst_node, incoming_edge.blob)
-                #self.del_edge(outgoing_edge)
+                self.del_edge(outgoing_edge)
             self.del_edge(incoming_edge)
         self.del_node(node)
 
@@ -308,7 +318,9 @@ class Topology:
     def del_edge(self, edge_to_del):
         for edge in self.edges:
             if edge == edge_to_del:
-                self.edges.remove(edge)
+                #self.edges.remove(edge)
+                print("deleted edge: " + str(edge))
+                edge.is_deleted = True
                 return
 
     def nodes_count(self):
@@ -327,14 +339,14 @@ class Topology:
     def find_outgoing_edges(self, node):
         edges = []
         for edge in self.edges:
-            if (edge.src_node != None) and (edge.src_node.name == node.name):
+            if (edge.is_deleted is False) and (edge.src_node != None) and (edge.src_node.name == node.name):
                 edges.append(edge)
         return edges
 
     def find_incoming_edges(self, node):
         edges = []
         for edge in self.edges:
-            if (edge.dst_node != None) and (edge.dst_node.name == node.name):
+            if (edge.is_deleted is False) and (edge.dst_node != None) and (edge.dst_node.name == node.name):
                 edges.append(edge)
         return edges
 
@@ -366,26 +378,32 @@ class Topology:
         """
         pending = deque([self.get_start_node()])    # The list of nodes waiting to be processed
         done = []                                   # The list of nodes we've already processed
+        global COUNT
+        COUNT += 1
         while len(pending) > 0:
             node = pending.popleft()
+            if node.is_deleted:
+                continue
 
             # This is a modification of BFS: we mandate that all incoming edges
             # have been processed before processing the node to ensure processing order satisfies data dependency
             """"""
-            if node_cb is None:
-            # if True:
-                print('====================================================================')
+            #if node_cb is None:
+            if True:
+                print('=== %d ================================================================', COUNT)
                 incoming_edges = self.find_incoming_edges(node)
                 all_in_edges_were_processed = True
                 for edge in incoming_edges:
                     if edge.src_node and edge.src_node not in done:
                         all_in_edges_were_processed = False
+                        print("%s is waiting for %s" % (node.name, edge.src_node.name))
                 if all_in_edges_were_processed is False:
                     continue
             """"""
             done.append(node)
+            print("done with ", node.name)
             if node_cb is not None:
-                # TODO: this can pboably be removed after adding the data-dependency constraint
+                # TODO: this can probably be removed after adding the data-dependency constraint
                 # Node callback can indicate failure, in which case we try again later
                 cb_handled = node_cb(node)
                 if cb_handled is False:
@@ -395,9 +413,10 @@ class Topology:
             outgoing_edges = self.find_outgoing_edges(node)
             for edge in outgoing_edges:
                 # invoke the edge callback
-                if edge_cb is not None: edge_cb(edge)
+                if edge_cb is not None:
+                    edge_cb(edge)
                 # add new nodes to visit
-                if (edge.dst_node is not None) and (edge.dst_node not in done):
+                if (edge.dst_node is not None) and (edge.dst_node not in done) and edge.dst_node not in pending:
                     pending.append(edge.dst_node)
 
 
