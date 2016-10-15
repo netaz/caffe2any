@@ -97,53 +97,55 @@ class PngPrinter(object):
 
         print('Drawing net to %s' % self.output_image_file)
 
-    def get_node_label(self, node, rankdir, format):
+    @staticmethod
+    def get_node_label(node, separator, format):
         """Define node label based on layer type.
-
-        Parameters
-        ----------
-        layer : ?
-        rankdir : {'LR', 'TB', 'BT'}
-            Direction of graph layout.
-
-        Returns
-        -------
-        string :
-            A label for the current layer
         """
 
         if format == "minimal":
-            return layer.name
-
-        if rankdir in ('TB', 'BT'):
-            # If graph orientation is vertical, horizontal space is free and
-            # vertical space is not; separate words with spaces
-            separator = ' '
-        else:
-            # If graph orientation is horizontal, vertical space is free and
-            # horizontal space is not; separate words with newlines
-            separator = '\\n'
+            return node.name
 
         layers = {
-            'Convolution': self.print_conv,
-            'Deconvolution': self.print_conv,
-            'Pooling': self.print_pool,
-            'LRN': self.print_lrn,
-            'Reshape': self.print_reshape,
+            'Convolution': PngPrinter.print_conv,
+            'Deconvolution': PngPrinter.print_conv,
+            'Pooling': PngPrinter.print_pool,
+            'LRN': PngPrinter.print_lrn,
+            'Reshape': PngPrinter.print_reshape,
+            'PairContainer': PngPrinter.print_container,
         }
 
-        printer = layers.get(node.type, None)
-        if printer is None:
-            node_label = '"%s%s(%s)"' % (node.name, separator, node.type)
-        else:
-            node_label = printer(node, separator, options['node_label'])
+        #if node.type == 'PairContainer':
+            #return PngPrinter.get_node_label(node.node1, separator, format)
+        printer = layers.get(node.type, PngPrinter.print_default)
+        node_label = printer(node, separator, options['node_label'])
         return node_label
 
-    def print_conv(self, node, separator, format):
+    @staticmethod
+    def print_default(node, separator, format):
+        node_label = '%s%s(%s)' % (node.name, separator, node.type)
+        return node_label
+
+    @staticmethod
+    def print_container(node, separator, format):
+        node1 = PngPrinter.get_node_label(node.node1, separator, format)
+        node2 = PngPrinter.get_node_label(node.node2, separator, format)
+
+        node1_list = node1.split(separator)
+        node2_list = node2.split(separator)
+        #node_label = '%s%s%s' % (node1_list[0], separator, node2_list[0])
+        node_label = node1_list[0]          # first node's name
+        for desc in node1_list[1:]:
+            node_label += separator + desc
+        for desc in node2_list:
+            node_label += separator + desc
+        return node_label
+
+    @staticmethod
+    def print_conv(node, separator, format):
         if format == 'caffe':
             # Outer double quotes needed or else colon characters don't parse
             # properly
-            node_label = '"%s%s(%s)%skernel size: %d%sstride: %d%spad: %d"' %\
+            node_label = '%s%s(%s)%skernel size: %d%sstride: %d%spad: %d' %\
                          (node.name, separator,
                           node.type, separator,
                           node.kernel_size, separator,
@@ -151,12 +153,13 @@ class PngPrinter(object):
         elif format == 'custom':
             node_label = node.name + separator + 'k=' + str(node.kernel_size) + 'x' + str(
                 node.kernel_size) + '/s=' + str(node.stride) + ' pad=' + str(node.pad)
-            node_label = '"%s%s(%s)"' % (node_label, separator, node.type)
+            node_label = '%s%s(%s)' % (node_label, separator, node.type)
         else:
             node_label = None
         return node_label
 
-    def print_pool(self, node, separator, format):
+    @staticmethod
+    def print_pool(node, separator, format):
         pooling_type = get_pooling_types_dict()
         if format=='caffe':
             node_label = '"%s%s(%s %s)%skernel size: %d%sstride: %d%spad: %d"' % \
@@ -174,7 +177,8 @@ class PngPrinter(object):
             node_label = None
         return node_label
 
-    def print_lrn(self, node, separator, format):
+    @staticmethod
+    def print_lrn(node, separator, format):
         if format == 'caffe':
             node_label = node.name
         elif format == 'custom':
@@ -186,7 +190,8 @@ class PngPrinter(object):
             node_label = None
         return node_label
 
-    def print_reshape(self, node, separator, format):
+    @staticmethod
+    def print_reshape(node, separator, format):
         if format == 'caffe':
             node_label = node.name
         elif format == 'custom':
@@ -202,7 +207,16 @@ class PngPrinter(object):
         # self.pydot_nodes[node.name] = pydot.Node(node.name,
                                     #    **NEURON_LAYER_STYLE)
         layer_style = choose_style_by_layertype(node.type)
-        node_label = self.get_node_label(node, rankdir, options['node_label'])
+        if rankdir in ('TB', 'BT'):
+            # If graph orientation is vertical, horizontal space is free and
+            # vertical space is not; separate words with spaces
+            separator = ' '
+        else:
+            # If graph orientation is horizontal, vertical space is free and
+            # horizontal space is not; separate words with newlines
+            separator = '\\n'
+
+        node_label = self.get_node_label(node, separator, options['node_label'])
         self.pydot_nodes[node.name] = pydot.Node(node_label, **layer_style)
 
     def add_pydot_edge(self, edge, tplgy):
@@ -236,9 +250,8 @@ class PngPrinter(object):
                     continue
 
                 # Found a match
-                new_node = copy.deepcopy(node)
-                new_node.name += "  ++  " + node.name
                 relu_node = out_edge.dst_node
+                new_node = topology.PairNode(copy.deepcopy(node), copy.deepcopy(relu_node))
 
                 relu_outgoing_edges = tplgy.find_outgoing_edges(relu_node)
                 assert len(relu_outgoing_edges) == 1

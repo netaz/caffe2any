@@ -27,7 +27,6 @@ class Node:
         self.name = name
         self.type = type
         self.role = role
-        self.is_deleted = False
 
     def __str__(self):
         return self.name + '(' + self.type + ')'
@@ -107,6 +106,15 @@ class ConvolutionNode(Node):
         ofm_y = ofms_descriptor[3]
         MACs = num_ofms * ofm_x * ofm_y * num_ifms * self.kernel_size * self.kernel_size
         return MACs
+
+
+class PairNode(ConvolutionNode):
+    def __init__(self, node1, node2):
+        self.node1 = node1
+        self.node2 = node2
+        name = node1.name + "  ++  " + node2.name
+        #node1.name = name
+        Node.__init__(self, name, 'PairContainer', node1.role)
 
 class DeconvolutionNode(Node):
     def __init__(self, name, type, layer):
@@ -413,24 +421,19 @@ class Topology:
         debug('Starting traversing with node %s' % self.get_start_node())
         while len(pending) > 0:
             node = pending.popleft()
-            if node.is_deleted:
-                continue
 
             # This is a modification of BFS: we mandate that all incoming edges
             # have been processed before processing the node to ensure processing order satisfies data dependency
-            """"""
-            #if node_cb is None:
-            if True:
-                debug('BFS processing node: %s' %node.name)
-                incoming_edges = self.find_incoming_edges(node)
-                all_in_edges_were_processed = True
-                for edge in incoming_edges:
-                    if edge.src_node and edge.src_node not in done:
-                        all_in_edges_were_processed = False
-                        debug("%s is waiting for %s" % (node.name, edge.src_node.name))
-                if all_in_edges_were_processed is False:
-                    continue
-            """"""
+            debug('BFS processing node: %s' %node.name)
+            incoming_edges = self.find_incoming_edges(node)
+            all_in_edges_were_processed = True
+            for edge in incoming_edges:
+                if edge.src_node and edge.src_node not in done:
+                    all_in_edges_were_processed = False
+                    debug("%s is waiting for %s" % (node.name, edge.src_node.name))
+            if all_in_edges_were_processed is False:
+                continue
+
             done.append(node)
             debug("done with %s" % node.name)
             if node_cb is not None:
