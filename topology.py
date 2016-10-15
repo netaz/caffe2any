@@ -405,6 +405,40 @@ class Topology:
                 blobs.append(blob)
         return blobs
 
+    # Search and replace
+    def merge_nodes(self, node1_type, node2_type):
+        done = False
+        while not done:
+            done = True
+            for node_name in self.nodes:
+                node = self.nodes[node_name]
+                if node.type != node1_type:
+                    continue
+                outgoing_edges = self.find_outgoing_edges(node)
+                assert len(outgoing_edges) == 1
+                out_edge = outgoing_edges[0]
+                if out_edge.dst_node.type != node2_type:
+                    continue
+
+                # Found a match
+                relu_node = out_edge.dst_node
+                new_node = PairNode(copy.deepcopy(node), copy.deepcopy(relu_node))
+
+                relu_outgoing_edges = self.find_outgoing_edges(relu_node)
+                assert len(relu_outgoing_edges) == 1
+                relu_out_edge = relu_outgoing_edges[0]
+
+                conv_incoming_edges = self.find_incoming_edges(node)
+                assert len(conv_incoming_edges) == 1
+                conv_incoming_edge = conv_incoming_edges[0]
+
+                self.add_edge(conv_incoming_edge.src_node, new_node, copy.deepcopy(conv_incoming_edge.blob))
+                self.add_edge(new_node, relu_out_edge.dst_node, copy.deepcopy(relu_out_edge.blob))
+                self.del_nodes([node, relu_node])
+                self.add_nodes([new_node])
+                done = False
+                break
+
     def traverse_blobs(self, blob_cb):
         done = []
         for blob in self.blobs:

@@ -162,7 +162,7 @@ class PngPrinter(object):
     def print_pool(node, separator, format):
         pooling_type = get_pooling_types_dict()
         if format=='caffe':
-            node_label = '"%s%s(%s %s)%skernel size: %d%sstride: %d%spad: %d"' % \
+            node_label = '%s%s(%s %s)%skernel size: %d%sstride: %d%spad: %d' % \
                          (node.name, separator, pooling_type[node.pool_type],
                           node.type, separator,
                           node.kernel_size, separator,
@@ -172,7 +172,7 @@ class PngPrinter(object):
                          node.kernel_size) + '/s=' + str(node.stride) + ' pad=' + str(node.pad)
             if node.ceiling:
                 node_label += ' ceiling'
-            node_label = '"%s%s(%s)"' % (node_label, separator, node.type)
+            node_label = '%s%s(%s)' % (node_label, separator, node.type)
         else:
             node_label = None
         return node_label
@@ -185,7 +185,7 @@ class PngPrinter(object):
             node_label = node.name + separator + lrn_type[node.norm_region] + \
                           ' size=' + str(node.local_size) + ' alpha=' + str(
                           node.alpha) + ' beta=' + str(node.beta)
-            node_label = '"%s%s(%s)"' % (node_label, separator, node.type)
+            node_label = '%s%s(%s)' % (node_label, separator, node.type)
         else:
             node_label = None
         return node_label
@@ -197,7 +197,7 @@ class PngPrinter(object):
         elif format == 'custom':
             node_label = '%s%s[%s,%s,%s,%s]' % \
                          (node.name, separator, node.reshape_param.dim[0], node.reshape_param.dim[1], node.reshape_param.dim[2], node.reshape_param.dim[3])
-            node_label = '"%s%s(%s)"' % (node_label, separator, node.type)
+            node_label = '%s%s(%s)' % (node_label, separator, node.type)
         else:
             node_label = None
         return node_label
@@ -233,41 +233,6 @@ class PngPrinter(object):
                                 'dst': edge.dst_node.name,
                                 'label': edge_label})
 
-    @staticmethod
-    # Search and replace
-    def merge_conv_relu_nodes(tplgy):
-        done = False
-        while not done:
-            done = True
-            for node_name in tplgy.nodes:
-                node = tplgy.nodes[node_name]
-                if node.type != 'Convolution':
-                    continue
-                outgoing_edges = tplgy.find_outgoing_edges(node)
-                assert len(outgoing_edges) == 1
-                out_edge = outgoing_edges[0]
-                if out_edge.dst_node.type != 'ReLU':
-                    continue
-
-                # Found a match
-                relu_node = out_edge.dst_node
-                new_node = topology.PairNode(copy.deepcopy(node), copy.deepcopy(relu_node))
-
-                relu_outgoing_edges = tplgy.find_outgoing_edges(relu_node)
-                assert len(relu_outgoing_edges) == 1
-                relu_out_edge = relu_outgoing_edges[0]
-
-                conv_incoming_edges = tplgy.find_incoming_edges(node)
-                assert len(conv_incoming_edges) == 1
-                conv_incoming_edge = conv_incoming_edges[0]
-
-                tplgy.add_edge(conv_incoming_edge.src_node, new_node, copy.deepcopy(conv_incoming_edge.blob))
-                tplgy.add_edge(new_node, relu_out_edge.dst_node, copy.deepcopy(relu_out_edge.blob))
-                tplgy.del_nodes([node, relu_node])
-                tplgy.add_nodes([new_node])
-                done = False
-                break
-
     def draw_net(self, caffe_net, rankdir, tplgy):
         pydot_graph = pydot.Dot(self.caffe_net.name if self.caffe_net.name else 'Net',
                                 graph_type='digraph',
@@ -275,7 +240,7 @@ class PngPrinter(object):
 
         # optional: collapse ReLU nodes
         if options['merge_conv_relu']:
-            self.merge_conv_relu_nodes(tplgy)
+            tplgy.merge_nodes('Convolution', 'ReLU')
 
         # tplgy.dump_edges()
         if options['remove_dropout']:
