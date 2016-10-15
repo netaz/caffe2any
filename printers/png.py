@@ -16,6 +16,8 @@ except ImportError:
 options = {
     # Merges Convolution and ReLU nodes. This makes for a more compact and readable graph.
     'merge_conv_relu': True,
+    # Merges Convolution, ReLU, and Pooling nodes.
+    'merge_conv_relu_pooling': True,
     # For Test/Inference networks, Dropout nodes are not interesting and can be removed for readability
     'remove_dropout': True,
     'verbose': True,
@@ -70,6 +72,16 @@ SOFT_THEME = {
     'Softmax':        {'shape': 'record',
                       'fillcolor': 'yellow',
                       'style': 'rounded, filled'},
+
+    'Convolution_ReLU':{'shape': 'record',
+                      'fillcolor': 'coral3',
+                      'style': 'rounded, filled'},
+
+    'Convolution_ReLU_Pooling':
+                      {'shape': 'record',
+                       'fillcolor': 'darkslategray',
+                       'style': 'rounded, filled'},
+
 }
 
 # theme = CAFFE_THEME
@@ -111,11 +123,11 @@ class PngPrinter(object):
             'Pooling': PngPrinter.print_pool,
             'LRN': PngPrinter.print_lrn,
             'Reshape': PngPrinter.print_reshape,
-            'PairContainer': PngPrinter.print_container,
+            #'PairContainer': PngPrinter.print_container,
+            'Convolution_ReLU': PngPrinter.print_container,
+            'Convolution_ReLU_Pooling': PngPrinter.print_container,
         }
 
-        #if node.type == 'PairContainer':
-            #return PngPrinter.get_node_label(node.node1, separator, format)
         printer = layers.get(node.type, PngPrinter.print_default)
         node_label = printer(node, separator, options['node_label'])
         return node_label
@@ -241,6 +253,9 @@ class PngPrinter(object):
         # optional: collapse ReLU nodes
         if options['merge_conv_relu']:
             tplgy.merge_nodes('Convolution', 'ReLU')
+        if options['merge_conv_relu_pooling']:
+            #tplgy.merge_nodes('PairContainer', 'Pooling')
+            tplgy.merge_nodes('Convolution_ReLU', 'Pooling')
 
         # tplgy.dump_edges()
         if options['remove_dropout']:

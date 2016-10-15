@@ -113,8 +113,9 @@ class PairNode(ConvolutionNode):
         self.node1 = node1
         self.node2 = node2
         name = node1.name + "  ++  " + node2.name
-        #node1.name = name
-        Node.__init__(self, name, 'PairContainer', node1.role)
+        type = node1.type + '_' + node2.type
+        #type = 'PairContainer'
+        Node.__init__(self, name, type, node1.role)
 
 class DeconvolutionNode(Node):
     def __init__(self, name, type, layer):
