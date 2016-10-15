@@ -195,22 +195,6 @@ class PngPrinter(object):
             node_label = None
         return node_label
 
-    """
-    def print_eltwise(selfself, node):
-        op_lookup = get_eltwise_op_dict()
-        return 'Eltwise,' + op_lookup[node.operation]
-
-        if format == 'caffe':
-            node_label = node.name
-        elif format == 'custom':
-            node_label = '%s%s[%s,%s,%s,%s]' % \
-                         (node.name, separator, node.reshape_param.dim[0], node.reshape_param.dim[1],
-                          node.reshape_param.dim[2], node.reshape_param.dim[3])
-            node_label = '"%s%s(%s)"' % (node_label, separator, node.type)
-        else:
-            node_label = None
-        return node_label
-    """
     def add_pydot_node(self, node, tplgy, rankdir):
         # node_name = "%s_%s" % (node.name, node.type)
         # self.pydot_nodes[node.name] = pydot.Node(node.name,
@@ -234,10 +218,6 @@ class PngPrinter(object):
                                 'label': edge_label})
 
     @staticmethod
-    def remove_dropout_node(node, tplgy):
-        tplgy.del_node_by_type(node, "Dropout")
-
-    @staticmethod
     # Search and replace
     def merge_conv_relu_nodes(tplgy):
         done = False
@@ -245,37 +225,33 @@ class PngPrinter(object):
             done = True
             for node_name in tplgy.nodes:
                 node = tplgy.nodes[node_name]
-                if node.type == 'Convolution':
-                    outgoing_edges = tplgy.find_outgoing_edges(node)
-                    assert len(outgoing_edges) == 1
-                    out_edge = outgoing_edges[0]
+                if node.type != 'Convolution':
+                    continue
+                outgoing_edges = tplgy.find_outgoing_edges(node)
+                assert len(outgoing_edges) == 1
+                out_edge = outgoing_edges[0]
+                if out_edge.dst_node.type != 'ReLU':
+                    continue
 
-                    if out_edge.dst_node.type == 'ReLU':
-                        # Found a match
-                        new_node = copy.deepcopy(node)
-                        new_node.name += "  ++  " + node.name
+                # Found a match
+                new_node = copy.deepcopy(node)
+                new_node.name += "  ++  " + node.name
 
-                        relu_node = out_edge.dst_node
-                        relu_outgoing_edges = tplgy.find_outgoing_edges(relu_node)
-                        assert len(relu_outgoing_edges) == 1
-                        relu_out_edge = relu_outgoing_edges[0]
+                relu_node = out_edge.dst_node
+                relu_outgoing_edges = tplgy.find_outgoing_edges(relu_node)
+                assert len(relu_outgoing_edges) == 1
+                relu_out_edge = relu_outgoing_edges[0]
 
-                        conv_incoming_edges = tplgy.find_incoming_edges(node)
-                        assert len(conv_incoming_edges) == 1
-                        conv_incoming_edge = conv_incoming_edges[0]
+                conv_incoming_edges = tplgy.find_incoming_edges(node)
+                assert len(conv_incoming_edges) == 1
+                conv_incoming_edge = conv_incoming_edges[0]
 
-                        tplgy.add_edge(conv_incoming_edge.src_node, new_node, copy.deepcopy(conv_incoming_edge.blob))
-                        tplgy.add_edge(new_node, relu_out_edge.dst_node, copy.deepcopy(relu_out_edge.blob))
-
-                        tplgy.del_edge(conv_incoming_edge)
-                        tplgy.del_edge(relu_out_edge)
-                        if tplgy.get_start_node == node:
-                            # about to remove the first node
-                            new_node
-                        tplgy.del_nodes([node, relu_node])
-                        tplgy.add_nodes([new_node])
-                        done = False
-                        break
+                tplgy.add_edge(conv_incoming_edge.src_node, new_node, copy.deepcopy(conv_incoming_edge.blob))
+                tplgy.add_edge(new_node, relu_out_edge.dst_node, copy.deepcopy(relu_out_edge.blob))
+                tplgy.del_nodes([node, relu_node])
+                tplgy.add_nodes([new_node])
+                done = False
+                break
 
     def draw_net(self, caffe_net, rankdir, tplgy):
         pydot_graph = pydot.Dot(self.caffe_net.name if self.caffe_net.name else 'Net',
@@ -286,10 +262,11 @@ class PngPrinter(object):
         if options['merge_conv_relu']:
             self.merge_conv_relu_nodes(tplgy)
 
-        tplgy.dump_edges()
+        # tplgy.dump_edges()
         if options['remove_dropout']:
-            tplgy.traverse(lambda node: self.remove_dropout_node(node, tplgy))
-        tplgy.dump_edges()
+            tplgy.remove_node_by_type('Dropout')
+
+        # tplgy.dump_edges()
         tplgy.traverse(lambda node: self.add_pydot_node(node, tplgy, rankdir),
                        lambda edge: self.add_pydot_edge(edge, tplgy))
 

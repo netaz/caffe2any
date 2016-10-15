@@ -312,19 +312,28 @@ class Topology:
         del self.nodes[node.name]
         node.name = node.name + "[DELETED]"
 
-    # TODO: I don't like this method - consider changing it
-    def del_node_by_type(self, node, type_to_remove):
-        if node.type != type_to_remove:
-            return
+    # The difference between del_node and remove_node?
+    # remove_node will del_node and also reconnect the edge around
+    # the node that was removed
+    def remove_node(self, node):
         incoming_edges = self.find_incoming_edges(node)
         outgoing_edges = self.find_outgoing_edges(node)
         for incoming_edge in incoming_edges:
             src = incoming_edge.src_node
             for outgoing_edge in outgoing_edges:
                 self.add_edge(src, outgoing_edge.dst_node, incoming_edge.blob)
-                self.del_edge(outgoing_edge)
-            self.del_edge(incoming_edge)
         self.del_node(node)
+
+    def remove_node_by_type(self, type_to_remove):
+        done = False
+        while not done:
+            done = True
+            for node_name in self.nodes:
+                node = self.nodes[node_name]
+                if node.type != type_to_remove:
+                    continue
+                self.remove_node(node)
+                done = False
 
     def add_blob(self, name, shape, producer):
         new_blob = BLOB(name, shape, producer)
@@ -418,12 +427,12 @@ class Topology:
                 for edge in incoming_edges:
                     if edge.src_node and edge.src_node not in done:
                         all_in_edges_were_processed = False
-                        print("%s is waiting for %s" % (node.name, edge.src_node.name))
+                        debug("%s is waiting for %s" % (node.name, edge.src_node.name))
                 if all_in_edges_were_processed is False:
                     continue
             """"""
             done.append(node)
-            print("done with %s" % node.name)
+            debug("done with %s" % node.name)
             if node_cb is not None:
                 # TODO: this can probably be removed after adding the data-dependency constraint
                 # Node callback can indicate failure, in which case we try again later
@@ -447,9 +456,9 @@ class Topology:
             for edge in outgoing_edges:
                 if (edge.dst_node is not None) and (edge.dst_node not in done) and edge.dst_node not in pending:
                     pending.append(edge.dst_node)
-                    print('BFS adding node: %s' % edge.dst_node.name)
+                    debug('BFS adding node: %s' % edge.dst_node.name)
                 elif edge.dst_node is not None:
-                    print('BFS ignoring  node: %s' % edge.dst_node.name)
+                    debug('BFS ignoring  node: %s' % edge.dst_node.name)
 
 
 def parse_caffe_net(caffe_net):
