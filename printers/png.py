@@ -1,6 +1,7 @@
 from __future__ import print_function
 from globals import get_pooling_types_dict, lrn_type
 import copy
+import topology
 """
 pydot is not supported under python 3 and pydot2 doesn't work properly.
 pydotplus works nicely (pip install pydotplus)
@@ -96,7 +97,7 @@ class PngPrinter(object):
 
         print('Drawing net to %s' % self.output_image_file)
 
-    def get_layer_label(self, layer, rankdir, format):
+    def get_node_label(self, node, rankdir, format):
         """Define node label based on layer type.
 
         Parameters
@@ -130,11 +131,12 @@ class PngPrinter(object):
             'LRN': self.print_lrn,
             'Reshape': self.print_reshape,
         }
-        printer = layers.get(layer.type, None)
+
+        printer = layers.get(node.type, None)
         if printer is None:
-            node_label = '"%s%s(%s)"' % (layer.name, separator, layer.type)
+            node_label = '"%s%s(%s)"' % (node.name, separator, node.type)
         else:
-            node_label = printer(layer, separator, options['node_label'])
+            node_label = printer(node, separator, options['node_label'])
         return node_label
 
     def print_conv(self, node, separator, format):
@@ -200,7 +202,7 @@ class PngPrinter(object):
         # self.pydot_nodes[node.name] = pydot.Node(node.name,
                                     #    **NEURON_LAYER_STYLE)
         layer_style = choose_style_by_layertype(node.type)
-        node_label = self.get_layer_label(node, rankdir, options['node_label'])
+        node_label = self.get_node_label(node, rankdir, options['node_label'])
         self.pydot_nodes[node.name] = pydot.Node(node_label, **layer_style)
 
     def add_pydot_edge(self, edge, tplgy):
@@ -236,8 +238,8 @@ class PngPrinter(object):
                 # Found a match
                 new_node = copy.deepcopy(node)
                 new_node.name += "  ++  " + node.name
-
                 relu_node = out_edge.dst_node
+
                 relu_outgoing_edges = tplgy.find_outgoing_edges(relu_node)
                 assert len(relu_outgoing_edges) == 1
                 relu_out_edge = relu_outgoing_edges[0]
