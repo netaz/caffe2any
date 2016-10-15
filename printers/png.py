@@ -1,6 +1,6 @@
 from __future__ import print_function
 from globals import get_pooling_types_dict, lrn_type
-
+import copy
 """
 pydot is not supported under python 3 and pydot2 doesn't work properly.
 pydotplus works nicely (pip install pydotplus)
@@ -13,8 +13,8 @@ except ImportError:
 
 # options
 options = {
-    # Collapses ReLU into the preceding layer. This makes for a more compact and readable graph.
-    'collapse_relu': True,
+    # Merges Convolution and ReLU nodes. This makes for a more compact and readable graph.
+    'merge_conv_relu': True,
     # For Test/Inference networks, Dropout nodes are not interesting and can be removed for readability
     'remove_dropout': True,
     'verbose': True,
@@ -236,34 +236,46 @@ class PngPrinter(object):
     @staticmethod
     def remove_dropout_node(node, tplgy):
         tplgy.del_node_by_type(node, "Dropout")
-    """
+
     @staticmethod
-    def remove_dropout_node(node, tplgy):
-        if node.type != "Dropout":
-            return
-        incoming_edges = tplgy.find_incoming_edges(node)
-        outgoing_edges = tplgy.find_outgoing_edges(node)
-        for incoming_edge in incoming_edges:
-            src = incoming_edge.src_node
-            for outgoing_edge in outgoing_edges:
-                tplgy.add_edge(src, outgoing_edge.dst_node, incoming_edge.blob)
-                # print("adding " + str(src) + "->" + str(outgoing_edge.dst_node))
-            tplgy.del_edge(incoming_edge)
-    """
-    @staticmethod
-    def collapse_relu_node(node, tplgy):
-        if node.type != "ReLU":
-            return
-        incoming_edges = tplgy.find_incoming_edges(node)
-        outgoing_edges = tplgy.find_outgoing_edges(node)
-        for incoming_edge in incoming_edges:
-            src = incoming_edge.src_node
-            src.name += "  ++  " + node.name
-            for outgoing_edge in outgoing_edges:
-                tplgy.add_edge(src, outgoing_edge.dst_node, incoming_edge.blob)
-                #print("adding " + str(src) + "->" + str(outgoing_edge.dst_node))
-                tplgy.del_edge(outgoing_edge)
-            tplgy.del_edge(incoming_edge)
+    # Search and replace
+    def merge_conv_relu_nodes(tplgy):
+        done = False
+        while not done:
+            done = True
+            for node_name in tplgy.nodes:
+                node = tplgy.nodes[node_name]
+                if node.type == 'Convolution':
+                    outgoing_edges = tplgy.find_outgoing_edges(node)
+                    assert len(outgoing_edges) == 1
+                    out_edge = outgoing_edges[0]
+
+                    if out_edge.dst_node.type == 'ReLU':
+                        # Found a match
+                        new_node = copy.deepcopy(node)
+                        new_node.name += "  ++  " + node.name
+
+                        relu_node = out_edge.dst_node
+                        relu_outgoing_edges = tplgy.find_outgoing_edges(relu_node)
+                        assert len(relu_outgoing_edges) == 1
+                        relu_out_edge = relu_outgoing_edges[0]
+
+                        conv_incoming_edges = tplgy.find_incoming_edges(node)
+                        assert len(conv_incoming_edges) == 1
+                        conv_incoming_edge = conv_incoming_edges[0]
+
+                        tplgy.add_edge(conv_incoming_edge.src_node, new_node, copy.deepcopy(conv_incoming_edge.blob))
+                        tplgy.add_edge(new_node, relu_out_edge.dst_node, copy.deepcopy(relu_out_edge.blob))
+
+                        tplgy.del_edge(conv_incoming_edge)
+                        tplgy.del_edge(relu_out_edge)
+                        if tplgy.get_start_node == node:
+                            # about to remove the first node
+                            new_node
+                        tplgy.del_nodes([node, relu_node])
+                        tplgy.add_nodes([new_node])
+                        done = False
+                        break
 
     def draw_net(self, caffe_net, rankdir, tplgy):
         pydot_graph = pydot.Dot(self.caffe_net.name if self.caffe_net.name else 'Net',
@@ -271,8 +283,9 @@ class PngPrinter(object):
                                 rankdir=rankdir)
 
         # optional: collapse ReLU nodes
-        if options['collapse_relu']:
-            tplgy.traverse(lambda node: self.collapse_relu_node(node, tplgy))
+        if options['merge_conv_relu']:
+            self.merge_conv_relu_nodes(tplgy)
+
         tplgy.dump_edges()
         if options['remove_dropout']:
             tplgy.traverse(lambda node: self.remove_dropout_node(node, tplgy))
