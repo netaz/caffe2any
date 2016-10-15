@@ -27,6 +27,10 @@ options = {
     'label_edges': True,
     # Graph drawing direction: left-right, top-bottom, bottom-top
     'rankdir': 'LR',  # {'LR', 'TB', 'BT'}
+    # Draw cluster bounding boxes
+    'draw_clusters': True,
+    # Generate a dot file (useful for debugging dot generation errors
+    'gen_dot_file': True,
 }
 
 # Themes
@@ -84,7 +88,7 @@ SOFT_THEME = {
 
 }
 
-# theme = CAFFE_THEME
+        # theme = CAFFE_THEME
 theme = SOFT_THEME
 
 
@@ -245,9 +249,36 @@ class PngPrinter(object):
                                 'dst': edge.dst_node.name,
                                 'label': edge_label})
 
+    def draw_clusters(self, pydot_graph):
+        clusters = {}
+        for node_name, pydot_node in self.pydot_nodes.iteritems():
+            cluster_name = node_name[0:node_name.find('/')]
+            # Dot doesn't handle well clusters with names that contain '-'
+            cluster_name = cluster_name.replace('-', '_')
+
+            is_new_cluster = True
+            for name, cluster in clusters.iteritems():
+                if name == cluster_name:
+                    is_new_cluster = False
+                    cluster.add_node(pydot_node)
+                    break
+            if is_new_cluster:
+                cluster = pydot.Cluster(cluster_name, label=cluster_name)
+                clusters[cluster_name] = cluster
+                # print("creating cluster: ", cluster_name)
+                cluster.add_node(pydot_node)
+
+        for cluster in clusters.itervalues():
+            # for clusters of size 1, we don't want to draw a cluster box
+            if len(cluster.get_nodes()) == 1:
+                pydot_graph.add_node(cluster.get_nodes()[0])
+            else:
+                pydot_graph.add_subgraph(cluster)
+
     def draw_net(self, caffe_net, rankdir, tplgy):
         pydot_graph = pydot.Dot(self.caffe_net.name if self.caffe_net.name else 'Net',
                                 graph_type='digraph',
+                                compound='true',
                                 rankdir=rankdir)
 
         # optional: collapse ReLU nodes
@@ -265,9 +296,13 @@ class PngPrinter(object):
         tplgy.traverse(lambda node: self.add_pydot_node(node, tplgy, rankdir),
                        lambda edge: self.add_pydot_edge(edge, tplgy))
 
+        # Cluster nodes by name prefix
         # add the nodes and edges to the graph.
-        for node in self.pydot_nodes.values():
-            pydot_graph.add_node(node)
+        if options['draw_clusters']:
+            self.draw_clusters(pydot_graph)
+        else:   # not clustering
+            for pydot_node in self.pydot_nodes.itervalues():
+                pydot_graph.add_node(pydot_node)
 
         for edge in self.pydot_edges:
             pydot_graph.add_edge(
@@ -275,7 +310,10 @@ class PngPrinter(object):
                            self.pydot_nodes[edge['dst']],
                            label=edge['label']))
 
-        print("number of nodes:", len(self.pydot_nodes))
+        print("Number of nodes:", len(self.pydot_nodes))
+        if options['gen_dot_file']:
+            print('Generating dot file')
+            pydot_graph.write_raw('debug.dot')
         return pydot_graph.create_png()
 
     def print_bfs(self, tplgy):
