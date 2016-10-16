@@ -6,6 +6,7 @@ class CsvPrinter:
 
     def __init__(self, fname):
         self.file = open(fname, "wt")
+        self.done_blobs = []
         # TODO - make this constants so they can be reused
         self.cols = ['Node', 'Type', 'Node Details', 'IFMz', 'IFMy', 'IFMx', 'OFMz', 'OFMy', 'OFMx',
                      'IFM Size (elems)', 'OFM Size (elems)', 'Weights Size(elems)', 'Bias Size(elems)', 'MACs']
@@ -36,7 +37,7 @@ class CsvPrinter:
     def print_unknown(self, node):
         return str(node.type) + ','
 
-    def print_layer(self, node):
+    def print_node(self, node):
         print_fn = {
             "Pooling": self.print_pool,
             "Convolution": self.print_conv,
@@ -111,7 +112,7 @@ class CsvPrinter:
         pass
         
     def print_inventory(self, tplgy):
-        node_types_cnt = self.count_nodes(tplgy)
+        node_types_cnt = tplgy.get_inventory()
 
         self.file.write('Type, Count\n')
         for type in node_types_cnt:
@@ -119,9 +120,9 @@ class CsvPrinter:
             self.file.write(line)
         self.file.write('\n')
 
-    def print_unique(self, unique_layers_list):
+     def print_unique(self, unique_layers_list):
         for node in unique_layers_list:
-            self.file.write(self.print_layer(node[0]) + '\n')
+            self.file.write(self.print_node(node[0]) + '\n')
 
     def print_unique_all(self, unique_layers_dict):
         self.file.write('Type, Configuration\n')
@@ -132,13 +133,12 @@ class CsvPrinter:
     def print_bfs(self, tplgy):
         self.file.write(', '.join(self.cols))
         self.file.write('\n')
-        self.done_blobs = []
         tplgy.traverse(None, lambda edge: self.print_edge_cb(edge, tplgy))
 
     def get_col_handlers(self, edge, tplgy):
         col_handlers = {
             'Node': (edge.src_node.name if edge.src_node else ''),
-            'Type': (str(self.print_layer(edge.src_node)) if edge.src_node else ','),
+            'Type': (str(self.print_node(edge.src_node)) if edge.src_node else ','),
             'Node Details': '#',
             'IFMz': self.print_ifms(edge.src_node, tplgy),
             'IFMy': '#',
