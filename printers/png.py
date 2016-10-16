@@ -1,5 +1,5 @@
 from __future__ import print_function
-from globals import get_pooling_types_dict, lrn_type
+from globals import get_pooling_types_dict, lrn_type, get_eltwise_op_dict
 import copy
 import topology
 """
@@ -17,7 +17,7 @@ options = {
     # Merges Convolution and ReLU nodes. This makes for a more compact and readable graph.
     'merge_conv_relu': True,
     # Merges Convolution, ReLU, and Pooling nodes.
-    'merge_conv_relu_pooling': True,
+    'merge_conv_relu_pooling': False,
     # For Test/Inference networks, Dropout nodes are not interesting and can be removed for readability
     'remove_dropout': True,
     'verbose': True,
@@ -127,6 +127,7 @@ class PngPrinter(object):
             'Pooling': PngPrinter.print_pool,
             'LRN': PngPrinter.print_lrn,
             'Reshape': PngPrinter.print_reshape,
+            'Eltwise': PngPrinter.print_eltwise,
             #'PairContainer': PngPrinter.print_container,
             'Convolution_ReLU': PngPrinter.print_container,
             'Convolution_ReLU_Pooling': PngPrinter.print_container,
@@ -213,6 +214,18 @@ class PngPrinter(object):
         elif format == 'custom':
             node_label = '%s%s[%s,%s,%s,%s]' % \
                          (node.name, separator, node.reshape_param.dim[0], node.reshape_param.dim[1], node.reshape_param.dim[2], node.reshape_param.dim[3])
+            node_label = '%s%s(%s)' % (node_label, separator, node.type)
+        else:
+            node_label = None
+        return node_label
+
+    @staticmethod
+    def print_eltwise(node, separator, format):
+        if format == 'caffe':
+            node_label = node.name
+        elif format == 'custom':
+            node_label = '%s%s%s' % \
+                         (node.name, separator, get_eltwise_op_dict()[node.operation])
             node_label = '%s%s(%s)' % (node_label, separator, node.type)
         else:
             node_label = None
