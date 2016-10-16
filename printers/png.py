@@ -1,7 +1,10 @@
 from __future__ import print_function
 from globals import get_pooling_types_dict, lrn_type, get_eltwise_op_dict
+import numpy as np
+import matplotlib.pyplot as plt
 import copy
 import topology
+
 """
 pydot is not supported under python 3 and pydot2 doesn't work properly.
 pydotplus works nicely (pip install pydotplus)
@@ -107,6 +110,7 @@ class PngPrinter(object):
 
     def __init__(self, args, net):
         self.output_image_file = args.infile + '.png'
+        self.output_inventory_file = args.infile + '_inventory.png'
         self.caffe_net = net
         self.pydot_nodes = {}
         self.pydot_edges = []
@@ -332,3 +336,34 @@ class PngPrinter(object):
     def print_bfs(self, tplgy):
         with open(self.output_image_file, 'wb') as fid:
             fid.write(self.draw_net(self.caffe_net, options['rankdir'], tplgy))
+
+    def print_inventory(self, tplgy):
+        self.draw_inventory(tplgy)
+
+    def draw_inventory(self, tplgy):
+        node_types_cnt = tplgy.get_inventory()
+
+        labels = []
+        values = []
+        for type, count in node_types_cnt.iteritems():
+            labels.append(type)
+            values.append(count)
+        data = values
+
+        xlocations = np.array(range(len(data))) + 0.5
+        width = 0.5
+        plt.bar(xlocations, data, width=width)
+        #plt.yticks(range(0, max(values)))
+        plt.yticks(np.arange(min(values), max(values), (max(values) - min(values)) / 10 ))
+        plt.xticks(xlocations + width / 2, labels, rotation='vertical')
+        # Pad margins so that markers don't get clipped by the axes
+        #plt.margins(0.2)
+        # Tweak spacing to prevent clipping of tick-labels
+        plt.subplots_adjust(bottom=0.25)
+
+        plt.xlim(0, xlocations[-1] + width * 2)
+        plt.title("Nodes Inventory")
+        plt.gca().get_xaxis().tick_bottom()
+        plt.gca().get_yaxis().tick_left()
+
+        plt.savefig(self.output_inventory_file)
