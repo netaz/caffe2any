@@ -26,10 +26,22 @@ import topology
 import copy
 
 DEBUG = False
+# options
+options = {
+    # Merges Convolution and ReLU nodes. This makes for a more compact and readable graph.
+    'merge_conv_relu': True,
+    # Merges Convolution, ReLU, and Pooling nodes.
+    'merge_conv_relu_pooling': False,
+    # Merges InnerProduct and ReLU nodes. This makes for a more compact and readable graph.
+    'merge_ip_relu': True,
+    # For Test/Inference networks, Dropout nodes are not interesting and can be removed for readability
+    'remove_dropout': True,
+}
 
 
 def debug(str):
-    if DEBUG: print (str)
+    if DEBUG:
+        print (str)
 
 
 def is_equal_conv(layer1, layer2):
@@ -180,6 +192,18 @@ def main():
     tplgy = topology.parse_caffe_net(net)
     # calculate BLOBs sizes
     tplgy.traverse(lambda node: update_blobs_size(tplgy, node))
+
+    # optional: collapse ReLU nodes
+    if options['merge_conv_relu']:
+        tplgy.merge_nodes('Convolution', 'ReLU')
+    if options['merge_conv_relu_pooling']:
+        tplgy.merge_nodes('Convolution_ReLU', 'Pooling')
+    if options['merge_ip_relu']:
+        tplgy.merge_nodes('InnerProduct', 'ReLU')
+
+    # tplgy.dump_edges()
+    if options['remove_dropout']:
+        tplgy.remove_node_by_type('Dropout')
 
     if args.printer == 'console':
         printer = console.ConsolePrinter()

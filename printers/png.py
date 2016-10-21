@@ -18,14 +18,6 @@ except ImportError:
 
 # options
 options = {
-    # Merges Convolution and ReLU nodes. This makes for a more compact and readable graph.
-    'merge_conv_relu': True,
-    # Merges Convolution, ReLU, and Pooling nodes.
-    'merge_conv_relu_pooling': False,
-    # Merges InnerProduct and ReLU nodes. This makes for a more compact and readable graph.
-    'merge_ip_relu': True,
-    # For Test/Inference networks, Dropout nodes are not interesting and can be removed for readability
-    'remove_dropout': True,
     'verbose': True,
     # The node label refers to the text that is inside each node in the graph
     'node_label': 'custom', # {'custom', 'caffe', 'minimal'}
@@ -301,18 +293,6 @@ class PngPrinter(object):
                                 graph_type='digraph',
                                 compound='true',
                                 rankdir=rankdir)
-
-        # optional: collapse ReLU nodes
-        if options['merge_conv_relu']:
-            tplgy.merge_nodes('Convolution', 'ReLU')
-        if options['merge_conv_relu_pooling']:
-            tplgy.merge_nodes('Convolution_ReLU', 'Pooling')
-        if options['merge_ip_relu']:
-            tplgy.merge_nodes('InnerProduct', 'ReLU')
-
-        # tplgy.dump_edges()
-        if options['remove_dropout']:
-            tplgy.remove_node_by_type('Dropout')
 
         # tplgy.dump_edges()
         tplgy.traverse(lambda node: self.add_pydot_node(node, tplgy, rankdir),
