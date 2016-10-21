@@ -113,14 +113,13 @@ class CsvPrinter:
         
     def print_inventory(self, tplgy):
         node_types_cnt = tplgy.get_inventory()
-
         self.file.write('Type, Count\n')
         for type in node_types_cnt:
             line = type + ',' + str(node_types_cnt[type]) + '\n'
             self.file.write(line)
         self.file.write('\n')
 
-     def print_unique(self, unique_layers_list):
+    def print_unique(self, unique_layers_list):
         for node in unique_layers_list:
             self.file.write(self.print_node(node[0]) + '\n')
 
