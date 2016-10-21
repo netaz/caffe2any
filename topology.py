@@ -9,7 +9,7 @@ from collections import OrderedDict, Counter, deque
 import math
 import copy
 
-DEBUG = True
+DEBUG = False
 DEBUG_TRANSFORM = False
 
 def debug(str):
@@ -422,7 +422,7 @@ class Topology:
                 outgoing_edges = self.find_outgoing_edges(node1)
                 assert len(outgoing_edges) == 1
                 out_edge = outgoing_edges[0]
-                if out_edge.dst_node.type != node2_type:
+                if out_edge.dst_node is None or out_edge.dst_node.type != node2_type:
                     continue
 
                 # Found a match
