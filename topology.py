@@ -9,7 +9,7 @@ from collections import OrderedDict, Counter, deque
 import math
 import copy
 
-DEBUG = False
+DEBUG = True
 DEBUG_TRANSFORM = False
 
 def debug(str):
@@ -416,31 +416,28 @@ class Topology:
         while not done:
             done = True
             for node_name in self.nodes:
-                node = self.nodes[node_name]
-                if node.type != node1_type:
+                node1 = self.nodes[node_name]
+                if node1.type != node1_type:
                     continue
-                outgoing_edges = self.find_outgoing_edges(node)
+                outgoing_edges = self.find_outgoing_edges(node1)
                 assert len(outgoing_edges) == 1
                 out_edge = outgoing_edges[0]
                 if out_edge.dst_node.type != node2_type:
                     continue
 
                 # Found a match
-                relu_node = out_edge.dst_node
-                new_node = PairNode(copy.deepcopy(node), copy.deepcopy(relu_node))
+                node2 = out_edge.dst_node
+                new_node = PairNode(copy.deepcopy(node1), copy.deepcopy(node2))
 
-                relu_outgoing_edges = self.find_outgoing_edges(relu_node)
-                print(relu_outgoing_edges)
-                assert len(relu_outgoing_edges)
-                relu_out_edge = relu_outgoing_edges[0]
+                node2_outgoing_edges = self.find_outgoing_edges(node2)
+                for node2_out_edge in node2_outgoing_edges:
+                    self.add_edge(new_node, node2_out_edge.dst_node, copy.deepcopy(node2_out_edge.blob))
 
-                conv_incoming_edges = self.find_incoming_edges(node)
-                assert len(conv_incoming_edges) == 1
-                conv_incoming_edge = conv_incoming_edges[0]
+                node1_incoming_edges = self.find_incoming_edges(node1)
+                for node1_incoming_edge in node1_incoming_edges:
+                    self.add_edge(node1_incoming_edge.src_node, new_node, copy.deepcopy(node1_incoming_edge.blob))
 
-                self.add_edge(conv_incoming_edge.src_node, new_node, copy.deepcopy(conv_incoming_edge.blob))
-                self.add_edge(new_node, relu_out_edge.dst_node, copy.deepcopy(relu_out_edge.blob))
-                self.del_nodes([node, relu_node])
+                self.del_nodes([node1, node2])
                 self.add_nodes([new_node])
                 done = False
                 break
