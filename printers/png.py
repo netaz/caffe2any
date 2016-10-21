@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 import topology
+from sys import exit
 
 """
 pydot is not supported under python 3 and pydot2 doesn't work properly.
@@ -236,9 +237,6 @@ class PngPrinter(object):
         return node_label
 
     def add_pydot_node(self, node, tplgy, rankdir):
-        # node_name = "%s_%s" % (node.name, node.type)
-        # self.pydot_nodes[node.name] = pydot.Node(node.name,
-                                    #    **NEURON_LAYER_STYLE)
         layer_style = choose_style_by_layertype(node.type)
         if rankdir in ('TB', 'BT'):
             # If graph orientation is vertical, horizontal space is free and
@@ -250,6 +248,7 @@ class PngPrinter(object):
             separator = '\\n'
 
         node_label = self.get_node_label(node, separator, options['node_label'])
+        #print('[png_printer] adding node: ', node.name)
         self.pydot_nodes[node.name] = pydot.Node(node_label, **layer_style)
 
     def add_pydot_edge(self, edge, tplgy):
@@ -269,7 +268,10 @@ class PngPrinter(object):
     def draw_clusters(self, pydot_graph):
         clusters = {}
         for node_name, pydot_node in self.pydot_nodes.iteritems():
-            cluster_name = node_name[0:node_name.find('/')]
+            if node_name.find('/') > 0:
+                cluster_name = node_name[0:node_name.find('/')]
+            else:
+                cluster_name = node_name
             # Dot doesn't handle well clusters with names that contain '-'
             cluster_name = cluster_name.replace('-', '_')
 
@@ -322,6 +324,10 @@ class PngPrinter(object):
                 pydot_graph.add_node(pydot_node)
 
         for edge in self.pydot_edges:
+            if edge['dst'] not in self.pydot_nodes:
+                print('Fatal error: node \'%s\' of edge %s is not in the pydot_node list!' % (edge['dst'], edge))
+                #exit()
+                break
             pydot_graph.add_edge(
                 pydot.Edge(self.pydot_nodes[edge['src']],
                            self.pydot_nodes[edge['dst']],
