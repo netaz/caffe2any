@@ -430,7 +430,8 @@ class Topology:
                 new_node = PairNode(copy.deepcopy(node), copy.deepcopy(relu_node))
 
                 relu_outgoing_edges = self.find_outgoing_edges(relu_node)
-                assert len(relu_outgoing_edges) == 1
+                print(relu_outgoing_edges)
+                assert len(relu_outgoing_edges)
                 relu_out_edge = relu_outgoing_edges[0]
 
                 conv_incoming_edges = self.find_incoming_edges(node)
@@ -457,24 +458,24 @@ class Topology:
         """
         pending = deque([self.get_start_node()])    # The list of nodes waiting to be processed
         done = []                                   # The list of nodes we've already processed
-        debug('Starting traversing with node %s' % self.get_start_node())
+        debug('BFS: Starting traversal with node %s' % self.get_start_node())
         while len(pending) > 0:
             node = pending.popleft()
 
             # This is a modification of BFS: we mandate that all incoming edges
             # have been processed before processing the node to ensure processing order satisfies data dependency
-            debug('BFS processing node: %s' %node.name)
+            debug('BFS: processing node: %s' %node.name)
             incoming_edges = self.find_incoming_edges(node)
             all_in_edges_were_processed = True
             for edge in incoming_edges:
                 if edge.src_node and edge.src_node not in done:
                     all_in_edges_were_processed = False
-                    debug("%s is waiting for %s" % (node.name, edge.src_node.name))
+                    debug("BFS: %s is waiting for %s" % (node.name, edge.src_node.name))
             if all_in_edges_were_processed is False:
                 continue
 
             done.append(node)
-            debug("done with %s" % node.name)
+            debug("BFS: done with %s" % node.name)
             if node_cb is not None:
                 # TODO: this can probably be removed after adding the data-dependency constraint
                 # Node callback can indicate failure, in which case we try again later
@@ -489,6 +490,7 @@ class Topology:
                 if edge_cb is not None:
                     exit = edge_cb(edge)
                     if exit:
+                        debug("BFS: abrupt traversal exit requested by edge", str(edge))
                         return
 
             # Add new nodes to visit.  We do this as a separate step from the edge-callbacks,
@@ -498,10 +500,10 @@ class Topology:
             for edge in outgoing_edges:
                 if (edge.dst_node is not None) and (edge.dst_node not in done) and edge.dst_node not in pending:
                     pending.append(edge.dst_node)
-                    debug('BFS adding node: %s' % edge.dst_node.name)
+                    debug('BFS: adding node: %s' % edge.dst_node.name)
                 elif edge.dst_node is not None:
-                    debug('BFS ignoring  node: %s' % edge.dst_node.name)
-
+                    debug('BFS: ignoring  node: %s' % edge.dst_node.name)
+        debug("BFS: traversal completed")
 
 def parse_caffe_net(caffe_net):
     """
