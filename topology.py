@@ -39,7 +39,16 @@ class Node:
     def is_same(this, other):
         return True
 
-    def get_MACs(self): 
+    def get_type(self):
+        return self.type
+
+    def get_name(self):
+        return self.name
+
+    def get_role(self):
+        return self.role
+
+    def get_MACs(self):
         return 0
 
 class PoolingNode(Node):
@@ -108,14 +117,32 @@ class ConvolutionNode(Node):
         return MACs
 
 
-class PairNode(ConvolutionNode):
+class PairNode(Node):
     def __init__(self, node1, node2):
         self.node1 = node1
         self.node2 = node2
         name = node1.name + "  ++  " + node2.name
         type = node1.type + '_' + node2.type
-        #type = 'PairContainer'
         Node.__init__(self, name, type, node1.role)
+
+"""
+class ConvolutionReLUNode(PairNode):
+    def __init__(self, node1, node2):
+        #PairNode.__init__(self, node1, node2)
+
+
+    def get_type(self):
+        return self.node1.type()
+
+    def get_name(self):
+        return self.node1.name()
+
+    def get_role(self):
+        return self.node1.role()
+
+    def get_MACs(self):
+        return self.node1.get_MACs()
+"""
 
 class DeconvolutionNode(Node):
     def __init__(self, name, type, layer):
@@ -211,6 +238,14 @@ class EltwiseNode(Node):
         Node.__init__(self, name, type, 'Producer')
         self.operation = layer.eltwise_param.operation
 
+class ConcatNode(Node):
+    def __init__(self, name, type, layer):
+        Node.__init__(self, name, type, 'Modifier')
+
+    #def transform_ifm(self, ifm_shape):
+    #    ofm_shape = copy.deepcopy(ifm_shape)
+    #    return ofm_shape
+
 def node_factory(name, type, layer, role):
     if type == "Pooling":
         new_node = PoolingNode(name, type, layer)
@@ -226,6 +261,8 @@ def node_factory(name, type, layer, role):
         new_node = ReshapeNode(name, type, layer)
     elif type == "Eltwise":
         new_node = EltwiseNode(name, type, layer)
+    elif type == "Concat":
+        new_node = ConcatNode(name, type, layer)
     else:
         new_node = Node(name, type, role)
     return new_node
@@ -411,7 +448,7 @@ class Topology:
         return blobs
 
     # Search and replace
-    def merge_nodes(self, node1_type, node2_type):
+    def merge_nodes(self, node1_type, node2_type, merged_node_type):
         done = False
         while not done:
             done = True
@@ -501,6 +538,81 @@ class Topology:
                 elif edge.dst_node is not None:
                     debug('BFS: ignoring  node: %s' % edge.dst_node.name)
         debug("BFS: traversal completed")
+
+    def update_blobs_size(self, node):
+        #print('updating node:' + node.name)
+        in_edges = self.find_incoming_edges(node)
+        out_edges = self.find_outgoing_edges(node)
+        if node.type == 'Convolution':
+            assert len(in_edges)==1 and len(out_edges)==1, (node.name, len(in_edges), len(out_edges), str(out_edges[0]))
+            if in_edges[0].blob.shape != None:
+                out_edges[0].blob.shape = node.transform_ifm(in_edges[0].blob.shape)
+        elif node.type == 'InnerProduct':
+            assert len(in_edges)==1 and len(out_edges)==1, node.name
+            if in_edges[0].blob.shape != None:
+                out_edges[0].blob.shape = node.transform_ifm(in_edges[0].blob.shape)
+        elif node.type == 'ReLU':
+            assert len(in_edges)==1, node.name
+            if in_edges[0].blob.shape != None:
+                for edge in out_edges:
+                    edge.blob.shape = in_edges[0].blob.shape
+        elif node.type == 'Pooling':
+            assert len(in_edges)==1 and len(out_edges)>0, node.name
+            if in_edges[0].blob.shape != None:
+                for edge in out_edges:
+                    edge.blob.shape = node.transform_ifm(in_edges[0].blob.shape)
+        elif node.type == 'Concat':
+            assert len(in_edges)>0 and len(out_edges)>0, node.name
+            for in_edge in in_edges:
+                if in_edge.blob.shape != None:
+                    representative_in_edge_shape = in_edge.blob.shape
+                else:
+                    return False
+            if representative_in_edge_shape != None:
+                for out_edge in out_edges:
+                    out_edge.blob.shape = copy.deepcopy(representative_in_edge_shape)
+
+                # concat on the channel dimension
+                ch_dim_size = 0
+                for in_edge in in_edges:
+                    ch_dim_size += in_edge.blob.shape[1]
+
+                for out_edge in out_edges:
+                    out_edge.blob.shape[1] = ch_dim_size
+        elif node.type == 'Deconvolution':
+            assert len(in_edges) == 1 and len(out_edges) == 1, (node.name, len(in_edges), len(out_edges), str(out_edges[0]))
+            if in_edges[0].blob.shape != None:
+                out_edges[0].blob.shape = node.transform_ifm(in_edges[0].blob.shape)
+        elif node.type == 'ROIPooling':
+            assert len(in_edges)==2 and len(out_edges)==1, node.name
+            #print(in_edges[0].blob.shape)
+            if in_edges[0].blob.shape != None:
+                out_edges[0].blob.shape = in_edges[0].blob.shape
+        elif node.type == 'Eltwise':
+            assert len(in_edges)==2 and len(out_edges)==1, node.name
+            #if in_edges[0].blob.shape != None:
+            # NETA: second edge was not evaluated yet
+            out_edges[0].blob.shape = in_edges[0].blob.shape
+        elif node.type == 'Python':
+            pass # Don't know how to handle this
+        elif node.type == 'Crop':
+            pass # Don't know how to handle this
+        elif node.type == 'Input':
+            assert len(out_edges)==1, node.name
+        elif node.type == 'Dropout':
+            assert len(in_edges)==1, node.name
+            if in_edges[0].blob.shape != None:
+                out_edges[0].blob.shape = in_edges[0].blob.shape
+        elif node.type == 'Reshape':
+            assert len(in_edges) == 1 and len(out_edges) == 1, node.name
+            out_edges[0].blob.shape = node.transform_ifm(in_edges[0].blob.shape)
+        else:
+            assert len(in_edges)==1 and len(out_edges)==1, node.name
+            if in_edges[0].blob.shape != None:
+                out_edges[0].blob.shape = in_edges[0].blob.shape
+
+        return True
+
 
 def parse_caffe_net(caffe_net):
     """

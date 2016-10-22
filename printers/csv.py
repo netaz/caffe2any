@@ -26,6 +26,11 @@ class CsvPrinter:
         return 'Convolution, k=' + str(node.kernel_size) + "x" + str(node.kernel_size) + '/s=' + str(
             node.stride) + ' pad=' + str(node.pad)
 
+    def print_conv_relu(self, merged_node):
+        node = merged_node.node1
+        return 'Convolution/ReLU, k=' + str(node.kernel_size) + "x" + str(node.kernel_size) + '/s=' + str(
+            node.stride) + ' pad=' + str(node.pad)
+
     def print_lrn(self, node):
         return 'LRN,' + lrn_type[node.norm_region] + ' local_size=' + str(node.local_size) + ' alpha=' + str(
             node.alpha) + ' beta=' + str(node.beta)
@@ -41,18 +46,20 @@ class CsvPrinter:
         print_fn = {
             "Pooling": self.print_pool,
             "Convolution": self.print_conv,
+            "Convolution_ReLU": self.print_conv_relu,
             "Deconvolution": self.print_deconv,
             "LRN": self.print_lrn,
             "Eltwise": self.print_eltwise,
-        }.get(node.type, self.print_unknown)
+        }.get(node.get_type(), self.print_unknown)
         return print_fn(node)
 
     def print_ifms(self, node, tplgy):
         edges = tplgy.find_incoming_edges(node)
-        if node.type in ['Convolution', 'InnerProduct', 'Pooling', 'Deconvolution', 'Eltwise']:
+        if node.type in ['Convolution', 'Convolution_ReLU', 'InnerProduct', 'Pooling', 'Deconvolution', 'Eltwise', 'LRN', 'Softmax']:
             #assert (len(edges) == 1)
             ifm_shape = edges[0].blob.shape
             if ifm_shape is None:
+                #print("node " + node.name + " has no ifm_shape")
                 return ',,'
             return str(ifm_shape[1]) + ',' + str(ifm_shape[2]) + ',' + str(ifm_shape[3])
         else:
@@ -60,9 +67,11 @@ class CsvPrinter:
 
     def get_weight_size(self, node, tplgy):
         edges = tplgy.find_incoming_edges(node)
-        if node.type in ['Convolution']:
+        if node.type in ['Convolution', 'Convolution_ReLU']:
             assert (len(edges) == 1)
             num_ifms = edges[0].blob.shape[1]
+            if node.type == 'Convolution_ReLU':
+                node = node.node1
             return node.kernel_size * node.kernel_size * node.num_output * num_ifms
         elif node.type in ['InnerProduct']:
             assert (len(edges) == 1)
@@ -70,19 +79,27 @@ class CsvPrinter:
         else:
             return 0
 
+    # todo: move this to Topology (per Node class)
     def get_bias_size(self, node, tplgy):
-        edges = tplgy.find_incoming_edges(node)
         if node.type in ['Convolution', 'InnerProduct']:
             return node.num_output
+        if node.type in ['Convolution_ReLU', 'InnerProduct_ReLU']:
+            return node.node1.num_output
         else:
             return 0
 
+    # todo: move this to Topology (per Node class)
     def get_ifm_size(self, node, tplgy):
         edges = tplgy.find_incoming_edges(node)
-        if node.type in ['Convolution', 'Pooling']:
+        if node.type in ['Convolution', 'Convolution_ReLU', 'Pooling', 'LRN', 'Softmax']:
             assert (len(edges) == 1)
             ifm = edges[0].blob
             return ifm.size()
+        elif node.type in ['Eltwise']:
+            # Eltwise has two inputs of equal dimensions
+            assert (len(edges) == 2)
+            ifm = edges[0].blob
+            return ifm.size() * 2
         elif node.type in ['InnerProduct']:
             assert (len(edges) == 1)
             ifm_shape = edges[0].blob.shape
@@ -96,17 +113,19 @@ class CsvPrinter:
             ofm_size = edge.blob.size()
         return ofm_size
 
-
+    # todo: move this to Topology (per Node class)
     def get_MACs(self, node, ofms_descriptor, tplgy):
-        if node.type in ['Convolution']:
+        if node.type in ['Convolution', 'Convolution_ReLU']:
             edges = tplgy.find_incoming_edges(node)
             assert (len(edges) == 1)
             num_ifms = edges[0].blob.shape[1]
+            if node.type == 'Convolution_ReLU':
+                node = node.node1
             return node.get_MACs(ofms_descriptor, num_ifms)
-        elif node.type in ['InnerProduct']:
+        elif node.type in ['InnerProduct', 'InnerProduct_ReLU']:
             return self.get_weight_size(node, tplgy)
         else:
-            return node.get_MACs()
+            return node.get_MACs()#(ofms_descriptor, num_ifms)
 
     def get_MACs_to_BW(self, node, ofms_descriptor, tplgy):
         pass
@@ -133,6 +152,7 @@ class CsvPrinter:
         self.file.write(', '.join(self.cols))
         self.file.write('\n')
         tplgy.traverse(None, lambda edge: self.print_edge_cb(edge, tplgy))
+        print('cvs printer: done with %s' % self.file.name)
 
     def get_col_handlers(self, edge, tplgy):
         col_handlers = {
@@ -160,8 +180,16 @@ class CsvPrinter:
         self.file.write('\n');
 
     def print_edge_cb(self, edge, tplgy):
+        # If we've printed the contribution of this BLOB, then we skip it.
+        # This will naturally filter out ReLU nodes, because they share their
+        # BLOB with either Convolution or InnerProduct
         if edge.blob in self.done_blobs:
-            return  # been there, done that
+            #print("skipping BLOB: %s from edge %s" % (edge.blob, str(edge)))
+            return
+        # We don't want to see 'modifier' nodes (e.g. Concat) it in the CSV, since
+        # they contribute no data transfer information
+        if edge.src_node.role == 'Modifier':
+            return
         self.done_blobs.append(edge.blob)
 
         col_handlers = self.get_col_handlers(edge, tplgy)

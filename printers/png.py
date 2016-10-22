@@ -127,9 +127,9 @@ class PngPrinter(object):
             'LRN': PngPrinter.print_lrn,
             'Reshape': PngPrinter.print_reshape,
             'Eltwise': PngPrinter.print_eltwise,
-            #'PairContainer': PngPrinter.print_container,
-            'Convolution_ReLU': PngPrinter.print_container,
-            'Convolution_ReLU_Pooling': PngPrinter.print_container,
+            'Concat': PngPrinter.print_concat,
+            'Convolution_ReLU': PngPrinter.print_mergednode,
+            'Convolution_ReLU_Pooling': PngPrinter.print_mergednode,
         }
 
         printer = layers.get(node.type, PngPrinter.print_default)
@@ -142,7 +142,13 @@ class PngPrinter(object):
         return node_label
 
     @staticmethod
-    def print_container(node, separator, format):
+    def print_concat(node, separator, format):
+        node_label = '%s%s(%s)' % (node.name, separator, node.type)
+        #node_label = '%s' % (node.type)
+        return node_label
+
+    @staticmethod
+    def print_mergednode(node, separator, format):
         node1 = PngPrinter.get_node_label(node.node1, separator, format)
         node2 = PngPrinter.get_node_label(node.node2, separator, format)
 
