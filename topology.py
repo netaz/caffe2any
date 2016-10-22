@@ -125,24 +125,6 @@ class PairNode(Node):
         type = node1.type + '_' + node2.type
         Node.__init__(self, name, type, node1.role)
 
-"""
-class ConvolutionReLUNode(PairNode):
-    def __init__(self, node1, node2):
-        #PairNode.__init__(self, node1, node2)
-
-
-    def get_type(self):
-        return self.node1.type()
-
-    def get_name(self):
-        return self.node1.name()
-
-    def get_role(self):
-        return self.node1.role()
-
-    def get_MACs(self):
-        return self.node1.get_MACs()
-"""
 
 class DeconvolutionNode(Node):
     def __init__(self, name, type, layer):
