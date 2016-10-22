@@ -125,6 +125,8 @@ class PairNode(Node):
         type = node1.type + '_' + node2.type
         Node.__init__(self, name, type, node1.role)
 
+    def is_same(self, other):
+        return self.node1.is_same(other.node1) and self.node2.is_same(other.node2)
 
 class DeconvolutionNode(Node):
     def __init__(self, name, type, layer):

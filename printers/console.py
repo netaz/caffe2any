@@ -1,4 +1,6 @@
 from __future__ import print_function
+from globals import *
+pooling_type = get_pooling_types_dict()
 
 class ConsolePrinter:
     """A simple console printer"""
@@ -23,6 +25,12 @@ class ConsolePrinter:
                'k=' + str(node.kernel_size) + "x" + str(node.kernel_size) + '/s=' + str(node.stride) + ' pad=' + str(
                    node.pad)
 
+    def print_conv_relu(self, merged_node):
+        node = merged_node.node1
+        return 'Convolution/ReLU', \
+               'k=' + str(node.kernel_size) + "x" + str(node.kernel_size) + '/s=' + str(
+                    node.stride) + ' pad=' + str(node.pad)
+
     def print_lrn(self, node):
         return 'LRN', \
                lrn_type[node.norm_region] + ' size=' + str(node.local_size) + ' alpha=' + str(
@@ -31,10 +39,11 @@ class ConsolePrinter:
     def print_unknown(self, node):
         return node.type, ""
 
-    def print_layer(self, node, count):
+    def print_node(self, node, count):
         print_fn = {
             "Pooling": self.print_pool,
             "Convolution": self.print_conv,
+            "Convolution_ReLU": self.print_conv_relu,
             "Deconvolution": self.print_deconv,
             "LRN": self.print_lrn,
         }.get(node.type, self.print_unknown)
@@ -44,7 +53,7 @@ class ConsolePrinter:
 
     def print_inventory(self, tplgy):
         print("Inventory:\n----------")
-        node_types_cnt = tplgy.nodes_count()
+        node_types_cnt = tplgy.get_inventory()
         for type in node_types_cnt:
             print('\t%-20s%-3i' % (type, node_types_cnt[type]))
         print("Total=", len(tplgy.nodes))
@@ -52,7 +61,7 @@ class ConsolePrinter:
 
     def print_unique(self, unique_layers_list):
         for node in unique_layers_list:
-            self.print_layer(node[0], node[1])  # print node, count
+            self.print_node(node[0], node[1])  # print node, count
 
     def print_unique_all(self, unique_layers_dict):
         print("Unique:\n--------")
