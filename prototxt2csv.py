@@ -123,12 +123,13 @@ def main():
     if options['merge_conv_relu']:
         tplgy.merge_nodes('Convolution', 'ReLU', 'Convolution_ReLU')
 
+    if options['merge_ip_relu']:
+        tplgy.merge_nodes('InnerProduct', 'ReLU', 'InnerProduct_ReLU')
+
     # This is a temp bug-bypass
     if args.printer == 'png':
         if options['merge_conv_relu_pooling']:
             tplgy.merge_nodes('Convolution_ReLU', 'Pooling', 'Convolution_ReLU_Pooling')
-        if options['merge_ip_relu']:
-            tplgy.merge_nodes('InnerProduct', 'ReLU', 'InnerProduct_ReLU')
 
     # tplgy.dump_edges()
     if options['remove_dropout']:

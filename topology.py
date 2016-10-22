@@ -473,7 +473,7 @@ class Topology:
                 node1_incoming_edges = self.find_incoming_edges(node1)
                 for node1_incoming_edge in node1_incoming_edges:
                     self.add_edge(node1_incoming_edge.src_node, new_node, copy.deepcopy(node1_incoming_edge.blob))
-
+                debug("[merge_nodes] deleting nodes %s, %s" % (node1.name,node2.name))
                 self.del_nodes([node1, node2])
                 self.add_nodes([new_node])
                 done = False

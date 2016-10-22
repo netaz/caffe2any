@@ -42,6 +42,7 @@ class CsvPrinter:
     def print_unknown(self, node):
         return str(node.type) + ','
 
+    # Print extra node details (e.g. kernel size, when applicable)
     def print_node(self, node):
         print_fn = {
             "Pooling": self.print_pool,
@@ -55,8 +56,7 @@ class CsvPrinter:
 
     def print_ifms(self, node, tplgy):
         edges = tplgy.find_incoming_edges(node)
-        if node.type in ['Convolution', 'Convolution_ReLU', 'InnerProduct', 'Pooling', 'Deconvolution', 'Eltwise', 'LRN', 'Softmax']:
-            #assert (len(edges) == 1)
+        if node.type in ['Convolution', 'Convolution_ReLU', 'InnerProduct', 'InnerProduct_ReLU', 'Pooling', 'Deconvolution', 'Eltwise', 'LRN', 'Softmax']:
             ifm_shape = edges[0].blob.shape
             if ifm_shape is None:
                 #print("node " + node.name + " has no ifm_shape")
@@ -73,9 +73,12 @@ class CsvPrinter:
             if node.type == 'Convolution_ReLU':
                 node = node.node1
             return node.kernel_size * node.kernel_size * node.num_output * num_ifms
-        elif node.type in ['InnerProduct']:
+        elif node.type in ['InnerProduct', 'InnerProduct_ReLU']:
             assert (len(edges) == 1)
-            return (self.get_ifm_size(node, tplgy) * node.num_output)
+            if node.type == 'InnerProduct_ReLU':
+                return (self.get_ifm_size(node, tplgy) * node.node1.num_output)
+            else:
+                return (self.get_ifm_size(node, tplgy) * node.num_output)
         else:
             return 0
 
@@ -100,7 +103,9 @@ class CsvPrinter:
             assert (len(edges) == 2)
             ifm = edges[0].blob
             return ifm.size() * 2
-        elif node.type in ['InnerProduct']:
+        elif node.type in ['InnerProduct', 'InnerProduct_ReLU']:
+            if len(edges) != 1:
+                print("node %s (%s) has an unexpected number of edges (%d edges)" % (node.name, node.get_type(), len(edges)))
             assert (len(edges) == 1)
             ifm_shape = edges[0].blob.shape
             return (ifm_shape[1] * ifm_shape[2] * ifm_shape[3])
