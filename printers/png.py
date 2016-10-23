@@ -27,6 +27,9 @@ options = {
     'rankdir': 'LR',  # {'LR', 'TB', 'BT'}
     # Draw cluster bounding boxes
     'draw_clusters': True,
+    # The separator character for parsing a node name to cluster_name-separator-node
+    # (only relevant if draw_clusters is True)
+    'cluster_name_separator': '/',
     # Generate a dot file (useful for debugging dot generation errors
     'gen_dot_file': True,
 }
@@ -109,8 +112,6 @@ class PngPrinter(object):
         self.caffe_net = net
         self.pydot_nodes = {}
         self.pydot_edges = []
-
-        print('Drawing net to %s' % self.output_image_file)
 
     @staticmethod
     def get_node_label(node, separator, format):
@@ -268,8 +269,9 @@ class PngPrinter(object):
     def draw_clusters(self, pydot_graph):
         clusters = {}
         for node_name, pydot_node in self.pydot_nodes.iteritems():
-            if node_name.find('/') > 0:
-                cluster_name = node_name[0:node_name.find('/')]
+            separator = options['cluster_name_separator']
+            if node_name.find(separator) > 0:
+                cluster_name = node_name[0:node_name.find(separator)]
             else:
                 cluster_name = node_name
             # Dot doesn't handle well clusters with names that contain '-'
@@ -331,6 +333,7 @@ class PngPrinter(object):
     def print_bfs(self, tplgy):
         with open(self.output_image_file, 'wb') as fid:
             fid.write(self.draw_net(self.caffe_net, options['rankdir'], tplgy))
+        print('Drawing net to %s' % self.output_image_file)
 
     def print_inventory(self, tplgy):
         self.draw_inventory(tplgy)
@@ -362,3 +365,4 @@ class PngPrinter(object):
         plt.gca().get_yaxis().tick_left()
 
         plt.savefig(self.output_inventory_file)
+        print('Drawing net to %s' % self.output_inventory_file)
