@@ -17,7 +17,7 @@ except ImportError:
     import pydot
 
 # options
-options = {
+default_options = {
     'verbose': True,
     # The node label refers to the text that is inside each node in the graph
     'node_label': 'custom', # {'custom', 'caffe', 'minimal'}
@@ -27,6 +27,23 @@ options = {
     'rankdir': 'LR',  # {'LR', 'TB', 'BT'}
     # Draw cluster bounding boxes
     'draw_clusters': True,
+    # The separator character for parsing a node name to cluster_name-separator-node
+    # (only relevant if draw_clusters is True)
+    'cluster_name_separator': '/',
+    # Generate a dot file (useful for debugging dot generation errors
+    'gen_dot_file': True,
+}
+
+google_options = {
+    'verbose': True,
+    # The node label refers to the text that is inside each node in the graph
+    'node_label': 'minimal', # {'custom', 'caffe', 'minimal'}
+    # Annotate the edges with the BLOB sizes
+    'label_edges': False,
+    # Graph drawing direction: left-right, top-bottom, bottom-top
+    'rankdir': 'LR',  # {'LR', 'TB', 'BT'}
+    # Draw cluster bounding boxes
+    'draw_clusters': False,
     # The separator character for parsing a node name to cluster_name-separator-node
     # (only relevant if draw_clusters is True)
     'cluster_name_separator': '/',
@@ -70,6 +87,10 @@ SOFT_THEME = {
                       'fillcolor': '#CC33FF',
                       'style': 'rounded, filled'},
 
+    'InnerProduct_ReLU': {'shape': 'record',
+                     'fillcolor': '#CC33FF',
+                     'style': 'rounded, filled'},
+
     'Concat':        {'shape': 'box3d',
                       'fillcolor': 'gray',
                       'style': 'filled'},
@@ -89,16 +110,52 @@ SOFT_THEME = {
 
 }
 
-        # theme = CAFFE_THEME
-theme = SOFT_THEME
+# http://designpieces.com/palette/google-new-logo-2015-color-palette-hex-and-rgb/
+GOOGLE_THEME = {
+    'layer_default': {'shape': 'record',
+                      'fillcolor': '#3cba54',
+                      'style': 'filled'},
 
+    'Convolution':   {'shape': 'record',
+                      'fillcolor': '#4885ed',
+                      'style': 'filled'},
+
+    'Pooling':       {'shape': 'record',
+                      'fillcolor': '#db3236',
+                      'style': 'filled'},
+
+    'InnerProduct': dict(shape='record', fillcolor='#4885ed', style='filled'),
+    'InnerProduct_ReLU': dict(shape='record', fillcolor='#4885ed', style='filled'),
+
+    'Softmax':        {'shape': 'record',
+                      'fillcolor': '#f4c20d',
+                      'style': 'filled'},
+
+    'SoftmaxWithLoss': dict(shape='record', fillcolor='#f4c20d', style='filled'),
+
+    'Convolution_ReLU':{'shape': 'record',
+                      'fillcolor': '#4885ed',
+                      'style': 'filled'},
+
+    'Convolution_ReLU_Pooling':
+                      {'shape': 'record',
+                       'fillcolor': '#4885ed',
+                       'style': 'filled'},
+    'Input': dict(shape='octagon', fillcolor='lightgray', style='filled'),
+
+}
+
+# theme = CAFFE_THEME
+# theme = SOFT_THEME
+theme = GOOGLE_THEME
+options = google_options
+#options = default_options
 
 def choose_style_by_layertype(layertype):
     try:
         layer_style = theme[layertype]
     except:
         layer_style = theme['layer_default']
-        layer_style['fillcolor'] = '#6495ED'  # Default
 
     return layer_style
 
