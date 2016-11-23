@@ -36,6 +36,8 @@ options = {
     'merge_ip_relu': True,
     # For Test/Inference networks, Dropout nodes are not interesting and can be removed for readability
     'remove_dropout': True,
+    # For Test/Inference networks, Batch Normalization nodes are not interesting and can be removed for readability
+    'remove_batchnorm': True,
 }
 
 
@@ -134,7 +136,8 @@ def main():
     # tplgy.dump_edges()
     if options['remove_dropout']:
         tplgy.remove_node_by_type('Dropout')
-
+    if options['remove_batchnorm']:
+        tplgy.remove_node_by_type('BatchNorm')
     if args.printer == 'console':
         printer = console.ConsolePrinter()
     elif args.printer == 'png':
