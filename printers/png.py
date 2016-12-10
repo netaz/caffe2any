@@ -24,7 +24,7 @@ default_options = {
     # Annotate the edges with the BLOB sizes
     'label_edges': True,
     # Graph drawing direction: left-right, top-bottom, bottom-top
-    'rankdir': 'LR',  # {'LR', 'TB', 'BT'}
+    'rankdir': 'TB',  # {'LR', 'TB', 'BT'}
     # Draw cluster bounding boxes
     'draw_clusters': True,
     # The separator character for parsing a node name to cluster_name-separator-node
@@ -37,11 +37,11 @@ default_options = {
 google_options = {
     'verbose': True,
     # The node label refers to the text that is inside each node in the graph
-    'node_label': 'minimal', # {'custom', 'caffe', 'minimal'}
+    'node_label': 'custom', # {'custom', 'caffe', 'minimal'}
     # Annotate the edges with the BLOB sizes
-    'label_edges': False,
+    'label_edges': True,
     # Graph drawing direction: left-right, top-bottom, bottom-top
-    'rankdir': 'LR',  # {'LR', 'TB', 'BT'}
+    'rankdir': 'TB',  # {'LR', 'TB', 'BT'}
     # Draw cluster bounding boxes
     'draw_clusters': False,
     # The separator character for parsing a node name to cluster_name-separator-node
@@ -146,8 +146,8 @@ GOOGLE_THEME = {
 }
 
 # theme = CAFFE_THEME
-# theme = SOFT_THEME
-theme = GOOGLE_THEME
+theme = SOFT_THEME
+#theme = GOOGLE_THEME
 options = google_options
 #options = default_options
 
