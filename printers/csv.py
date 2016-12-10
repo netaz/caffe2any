@@ -9,7 +9,7 @@ class CsvPrinter:
         self.done_blobs = []
         # TODO - make this constants so they can be reused
         self.cols = ['Node', 'Type', 'Node Details', 'IFMz', 'IFMy', 'IFMx', 'OFMz', 'OFMy', 'OFMx',
-                     'IFM Size (elems)', 'OFM Size (elems)', 'Weights Size(elems)', 'Bias Size(elems)', 'MACs']
+                     'IFM Volume (elems)', 'OFM Volume (elems)', 'Weights Volume (elems)', 'Bias Volume (elems)', 'MACs']
 
     def print_pool(self, node):
         desc = "Pool," + pooling_type[node.pool_type] + ' k=' + str(node.kernel_size) + "x" + str(
@@ -170,10 +170,10 @@ class CsvPrinter:
             'OFMz': (str(edge.blob.shape[1]) if edge.blob.shape else ''),  # OFMz
             'OFMy': (str(edge.blob.shape[2]) if edge.blob.shape else ''),  # OFMy
             'OFMx': (str(edge.blob.shape[3]) if edge.blob.shape else ''),  # OFMx
-            'IFM Size (elems)': str(self.get_ifm_size(edge.src_node, tplgy)),
-            'OFM Size (elems)': str(self.get_ofm_size(edge)),
-            'Weights Size(elems)': str(self.get_weight_size(edge.src_node, tplgy)),
-            'Bias Size(elems)': str(self.get_bias_size(edge.src_node, tplgy)),
+            'IFM Volume (elems)': str(self.get_ifm_size(edge.src_node, tplgy)),
+            'OFM Volume (elems)': str(self.get_ofm_size(edge)),
+            'Weights Volume (elems)': str(self.get_weight_size(edge.src_node, tplgy)),
+            'Bias Volume (elems)': str(self.get_bias_size(edge.src_node, tplgy)),
             'MACs': str(self.get_MACs(edge.src_node, edge.blob.shape, tplgy)),
         }
         return col_handlers
