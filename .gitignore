@@ -3,4 +3,5 @@
 *.csv
 *.png
 *.log
+*.dot
 tmp
