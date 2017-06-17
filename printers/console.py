@@ -1,5 +1,5 @@
 from __future__ import print_function
-from globals import *
+from .globals import *
 pooling_type = get_pooling_types_dict()
 
 class ConsolePrinter:
