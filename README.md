@@ -1,4 +1,4 @@
-# prototxt2csv: analyze prototxt files
+# caffe2any: analyze Caffe prototxt files
 
 This project contains a few utilities to analyze Caffe prototxt files.
 My aim is to get a better understanding of the structure of DL topologies, either by extracting layer statistics or by generating visualizations of the network.
