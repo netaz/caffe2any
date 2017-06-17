@@ -22,6 +22,7 @@ import caffe_pb2 as caffe
 from google.protobuf import text_format
 from printers.png import PngPrinter
 from printers import csv, console
+from caffe_parser import parse_caffe_net
 import topology
 import copy
 
@@ -116,7 +117,7 @@ def main():
     except IOError:
         exit("Could not open file " + sys.argv[1])
 
-    tplgy = topology.parse_caffe_net(net)
+    tplgy = parse_caffe_net(net)
     # calculate BLOBs sizes
     tplgy.traverse(lambda node: tplgy.update_blobs_size(node))
 
