@@ -1,5 +1,5 @@
 from __future__ import print_function
-#from globals import get_pooling_types_dict, lrn_type, get_eltwise_op_dict
+from .globals import *
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
@@ -368,7 +368,7 @@ class PngPrinter(object):
         if options['draw_clusters']:
             self.draw_clusters(pydot_graph)
         else:   # not clustering
-            for pydot_node in self.pydot_nodes.itervalues():
+            for pydot_node in iter(self.pydot_nodes.values()):
                 pydot_graph.add_node(pydot_node)
 
         for edge in self.pydot_edges:
