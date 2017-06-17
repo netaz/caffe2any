@@ -1,5 +1,5 @@
 from __future__ import print_function
-from globals import get_pooling_types_dict, lrn_type, get_eltwise_op_dict
+#from globals import get_pooling_types_dict, lrn_type, get_eltwise_op_dict
 import numpy as np
 import matplotlib.pyplot as plt
 import copy

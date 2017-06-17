@@ -1,4 +1,4 @@
-from globals import *
+from .globals import *
 pooling_type = get_pooling_types_dict()
 
 class CsvPrinter:
