@@ -108,7 +108,7 @@ class ConvolutionNode(Node):
         debug_tr(str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
-    def get_MACs(self, ofms_descriptor, num_ifms): 
+    def get_MACs(self, ofms_descriptor, num_ifms):
         # macs = #OFMs*OFM_X*OFM_Y*#IFMs*K_X*K_Y
         num_ofms = ofms_descriptor[1]
         ofm_x = ofms_descriptor[2]
@@ -294,7 +294,7 @@ class Edge:
 class Topology:
     def __init__(self):
         """
-        Keep the the vertices ordered by insertion, so that we have 
+        Keep the the vertices ordered by insertion, so that we have
         a starting point
         """
         self.nodes = OrderedDict()
@@ -358,7 +358,7 @@ class Topology:
         done = False
         while not done:
             done = True
-            for node_name in self.nodes:
+            for node_name in list(self.nodes.keys()):
                 node = self.nodes[node_name]
                 if node.type != type_to_remove:
                     continue
@@ -596,6 +596,3 @@ class Topology:
                 out_edges[0].blob.shape = in_edges[0].blob.shape
 
         return True
-
-
-
