@@ -35,15 +35,15 @@ default_options = {
 }
 
 google_options = {
-    'verbose': True,
+    'verbose': False,
     # The node label refers to the text that is inside each node in the graph
     'node_label': 'custom', # {'custom', 'caffe', 'minimal'}
     # Annotate the edges with the BLOB sizes
     'label_edges': True,
     # Graph drawing direction: left-right, top-bottom, bottom-top
-    'rankdir': 'TB',  # {'LR', 'TB', 'BT'}
+    'rankdir': 'LR',  # {'LR', 'TB', 'BT'}
     # Draw cluster bounding boxes
-    'draw_clusters': False,
+    'draw_clusters': True,
     # The separator character for parsing a node name to cluster_name-separator-node
     # (only relevant if draw_clusters is True)
     'cluster_name_separator': '/',
@@ -325,7 +325,7 @@ class PngPrinter(object):
 
     def draw_clusters(self, pydot_graph):
         clusters = {}
-        for node_name, pydot_node in self.pydot_nodes.iteritems():
+        for node_name, pydot_node in self.pydot_nodes.items():
             separator = options['cluster_name_separator']
             if node_name.find(separator) > 0:
                 cluster_name = node_name[0:node_name.find(separator)]
@@ -335,7 +335,7 @@ class PngPrinter(object):
             cluster_name = cluster_name.replace('-', '_')
 
             is_new_cluster = True
-            for name, cluster in clusters.iteritems():
+            for name, cluster in clusters.items():
                 if name == cluster_name:
                     is_new_cluster = False
                     cluster.add_node(pydot_node)
@@ -346,7 +346,7 @@ class PngPrinter(object):
                 # print("creating cluster: ", cluster_name)
                 cluster.add_node(pydot_node)
 
-        for cluster in clusters.itervalues():
+        for cluster in clusters.values():
             # for clusters of size 1, we don't want to draw a cluster box
             if len(cluster.get_nodes()) == 1:
                 pydot_graph.add_node(cluster.get_nodes()[0])
@@ -400,7 +400,7 @@ class PngPrinter(object):
 
         labels = []
         values = []
-        for type, count in node_types_cnt.iteritems():
+        for type, count in node_types_cnt.items():
             labels.append(type)
             values.append(count)
         data = values
