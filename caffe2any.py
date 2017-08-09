@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """
-Start by downloading the Caffe proto file from 
+Start by downloading the Caffe proto file from
 https://github.com/BVLC/caffe/blob/master/src/caffe/proto/caffe.proto
 
 Then use protoc to compile it to caffe_pb2
@@ -123,6 +123,11 @@ def main():
 
 
     # Handle optional processing on the topology
+    if options['remove_dropout']:
+        tplgy.remove_node_by_type('Dropout')
+    if options['remove_batchnorm']:
+        tplgy.remove_node_by_type('BatchNorm')
+
     if options['merge_conv_relu']:
         tplgy.merge_nodes('Convolution', 'ReLU', 'Convolution_ReLU')
 
@@ -135,10 +140,6 @@ def main():
             tplgy.merge_nodes('Convolution_ReLU', 'Pooling', 'Convolution_ReLU_Pooling')
 
     # tplgy.dump_edges()
-    if options['remove_dropout']:
-        tplgy.remove_node_by_type('Dropout')
-    if options['remove_batchnorm']:
-        tplgy.remove_node_by_type('BatchNorm')
     if args.printer == 'console':
         printer = console.ConsolePrinter()
     elif args.printer == 'png':
