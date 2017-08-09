@@ -14,7 +14,7 @@ summary
 """
 
 # See - http://stackoverflow.com/questions/2970858/why-doesnt-print-work-in-a-lambda
-from __future__ import print_function
+#from __future__ import print_function
 import sys
 import argparse
 from collections import deque, Counter
@@ -100,6 +100,8 @@ def sum_blob_mem(tplgy, node, blobs, sum):
             sum[0] += out_edge.blob.size()
             blobs.append(out_edge.blob)
 
+from transformers.update_blobs_sizes import update_blobs_sizes
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--printer', help='output printer (csv, console, png)', default='console')
@@ -119,8 +121,7 @@ def main():
 
     tplgy = parse_caffe_net(net)
     # calculate BLOBs sizes
-    tplgy.traverse(lambda node: tplgy.update_blobs_size(node))
-
+    tplgy.traverse(lambda node: update_blobs_sizes(tplgy, node))
 
     # Handle optional processing on the topology
     if options['remove_dropout']:
