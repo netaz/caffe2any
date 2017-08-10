@@ -1,3 +1,8 @@
+"""This transformer updates the sizes of the BLOBs based on the operation
+of each of the nodes.
+
+"""
+
 def update_blobs_sizes(tplgy, node):
     #print('updating node:' + node.name)
     in_edges = tplgy.find_incoming_edges(node)
