@@ -41,7 +41,11 @@ options = {
     # For Test/Inference networks, Batch Normalization nodes can sometimes be removed.  This is
     # explained by TensorFlow documentation:
     # https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md#fold_batch_norms
+    # TODO: change the implementation so that BN is removed only if we recognize the CONV + BN pattern
     'fold_batchnorm': True,
+    # Fold the scale layer into the convolution weights
+    # TODO: change the implementation so that BN is removed only if we recognize the CONV + Scale pattern
+    'fold_scale': True,
 }
 
 
@@ -112,6 +116,8 @@ def main():
         tplgy.remove_node_by_type('Dropout')
     if options['fold_batchnorm']:
         tplgy.remove_node_by_type('BatchNorm')
+    if options['fold_scale']:
+        tplgy.remove_node_by_type('Scale')
 
     if options['merge_conv_relu']:
         tplgy.merge_nodes('Convolution', 'ReLU', 'Convolution_ReLU')
