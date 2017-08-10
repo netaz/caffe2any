@@ -53,31 +53,6 @@ def debug(str):
     if DEBUG:
         print (str)
 
-
-def is_equal_conv(layer1, layer2):
-    param1 = layer1.convolution_param
-    kernel_size1 = param1.kernel_size
-    stride1 = param1.stride
-    pad1 = param1.pad
-
-    param2 = layer2.convolution_param
-    kernel_size2 = param2.kernel_size
-    stride2 = param2.stride
-    pad2 = param2.pad
-    return (kernel_size1, stride1, pad1) == (kernel_size2, stride2, pad2)
-
-
-def is_equal(layer1, layer2):
-    assert layer1.type == layer2.type
-    if layer1.type == "Pooling":
-        return layer1.pooling_param == layer2.pooling_param
-    if layer1.type == "Convolution":
-        return is_equal_conv(layer1, layer2)
-    if layer1.type == "LRN":
-        return layer1.lrn_param == layer2.lrn_param
-    return True
-
-
 def sum_blob_mem(tplgy, node, blobs, sum):
     if node.type == "Input" or node.role == "Modifier":
         return
