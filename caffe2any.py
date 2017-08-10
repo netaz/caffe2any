@@ -64,6 +64,7 @@ def sum_blob_mem(tplgy, node, blobs, sum):
             blobs.append(out_edge.blob)
 
 from transformers.update_blobs_sizes import update_blobs_sizes
+from transformers import fold_transforms
 
 def main():
     parser = argparse.ArgumentParser()
@@ -90,9 +91,9 @@ def main():
     if options['remove_dropout']:
         tplgy.remove_node_by_type('Dropout')
     if options['fold_batchnorm']:
-        tplgy.remove_node_by_type('BatchNorm')
+        fold_transforms.fold_pair(tplgy, 'Convolution', 'BatchNorm')
     if options['fold_scale']:
-        tplgy.remove_node_by_type('Scale')
+        fold_transforms.fold_pair(tplgy, 'Convolution', 'Scale')
 
     if options['merge_conv_relu']:
         tplgy.merge_nodes('Convolution', 'ReLU', 'Convolution_ReLU')

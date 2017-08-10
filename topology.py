@@ -123,6 +123,7 @@ class PairNode(Node):
         self.node2 = node2
         name = node1.name + "  ++  " + node2.name
         type = node1.type + '_' + node2.type
+        #type = new_type if new_type is not None else node1.type + '_' + node2.type
         Node.__init__(self, name, type, node1.role)
 
     def is_same(self, other):
@@ -342,6 +343,9 @@ class Topology:
         del self.nodes[node.name]
         node.name = node.name + "[DELETED]"
 
+    def remove_nodes(self, nodes):
+        [self.remove_node(node) for node in nodes]
+
     # The difference between del_node and remove_node?
     # remove_node will del_node and also reconnect the edge around
     # the node that was removed
@@ -431,37 +435,41 @@ class Topology:
                 blobs.append(blob)
         return blobs
 
-    # Search and replace
+    def find_subgraph_pair(self, node1_type, node2_type):
+        pairs = []
+        for node_name in self.nodes:
+            # Search for a matching pair of nodes, by node types
+            node1 = self.nodes[node_name]
+            if node1.type != node1_type:
+                continue
+            outgoing_edges = self.find_outgoing_edges(node1)
+            assert len(outgoing_edges) == 1
+            out_edge = outgoing_edges[0]
+            if out_edge.dst_node is None or out_edge.dst_node.type != node2_type:
+                continue
+
+            # Found a match
+            node2 = out_edge.dst_node
+            pairs.append([node1, node2])
+        return pairs
+
     def merge_nodes(self, node1_type, node2_type, merged_node_type):
-        done = False
-        while not done:
-            done = True
-            for node_name in self.nodes:
-                node1 = self.nodes[node_name]
-                if node1.type != node1_type:
-                    continue
-                outgoing_edges = self.find_outgoing_edges(node1)
-                assert len(outgoing_edges) == 1
-                out_edge = outgoing_edges[0]
-                if out_edge.dst_node is None or out_edge.dst_node.type != node2_type:
-                    continue
+        ''' Merge two nodes together
+        '''
+        pairs = self.find_subgraph_pair(node1_type, node2_type)
+        for (node1, node2) in pairs:
+            new_node = PairNode(copy.deepcopy(node1), copy.deepcopy(node2))
+            node2_outgoing_edges = self.find_outgoing_edges(node2)
+            for node2_out_edge in node2_outgoing_edges:
+                self.add_edge(new_node, node2_out_edge.dst_node, copy.deepcopy(node2_out_edge.blob))
 
-                # Found a match
-                node2 = out_edge.dst_node
-                new_node = PairNode(copy.deepcopy(node1), copy.deepcopy(node2))
-
-                node2_outgoing_edges = self.find_outgoing_edges(node2)
-                for node2_out_edge in node2_outgoing_edges:
-                    self.add_edge(new_node, node2_out_edge.dst_node, copy.deepcopy(node2_out_edge.blob))
-
-                node1_incoming_edges = self.find_incoming_edges(node1)
-                for node1_incoming_edge in node1_incoming_edges:
-                    self.add_edge(node1_incoming_edge.src_node, new_node, copy.deepcopy(node1_incoming_edge.blob))
-                debug("[merge_nodes] deleting nodes %s, %s" % (node1.name,node2.name))
-                self.del_nodes([node1, node2])
-                self.add_nodes([new_node])
-                done = False
-                break
+            node1_incoming_edges = self.find_incoming_edges(node1)
+            for node1_incoming_edge in node1_incoming_edges:
+                self.add_edge(node1_incoming_edge.src_node, new_node, copy.deepcopy(node1_incoming_edge.blob))
+            debug("[merge_nodes] deleting nodes %s, %s" % (node1.name,node2.name))
+            self.del_nodes([node1, node2])
+            self.add_nodes([new_node])
+        return
 
     def traverse_blobs(self, blob_cb):
         done = []
