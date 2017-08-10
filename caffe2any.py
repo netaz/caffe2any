@@ -23,6 +23,7 @@ from google.protobuf import text_format
 from printers.png import PngPrinter
 from printers import csv, console
 from caffe_parser import parse_caffe_net
+from transformers import inventory
 import topology
 import copy
 
@@ -69,25 +70,6 @@ def is_equal(layer1, layer2):
     if layer1.type == "LRN":
         return layer1.lrn_param == layer2.lrn_param
     return True
-
-
-def is_unique(node, unique_list):
-    unique = True
-    for unique_layer in unique_list:
-        #if is_equal(unique_layer[0], layer):
-        if unique_layer[0].is_same(node):
-            unique = False
-            unique_list.remove(unique_layer)
-            unique_list.append((node, unique_layer[1]+1))
-            break
-    return unique
-
-
-def add_unique(node, unique_layers):
-    if unique_layers.get(node.type)==None:
-        unique_layers[node.type] = []
-    if is_unique(node, unique_layers[node.type]):
-        unique_layers[node.type].append((node, 1))
 
 
 def sum_blob_mem(tplgy, node, blobs, sum):
