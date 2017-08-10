@@ -38,8 +38,10 @@ options = {
     'merge_ip_relu': True,
     # For Test/Inference networks, Dropout nodes are not interesting and can be removed for readability
     'remove_dropout': True,
-    # For Test/Inference networks, Batch Normalization nodes are not interesting and can be removed for readability
-    'remove_batchnorm': True,
+    # For Test/Inference networks, Batch Normalization nodes can sometimes be removed.  This is
+    # explained by TensorFlow documentation:
+    # https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md#fold_batch_norms
+    'fold_batchnorm': True,
 }
 
 
@@ -108,7 +110,7 @@ def main():
     # Handle optional processing on the topology
     if options['remove_dropout']:
         tplgy.remove_node_by_type('Dropout')
-    if options['remove_batchnorm']:
+    if options['fold_batchnorm']:
         tplgy.remove_node_by_type('BatchNorm')
 
     if options['merge_conv_relu']:
