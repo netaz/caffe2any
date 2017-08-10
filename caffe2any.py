@@ -23,7 +23,7 @@ from google.protobuf import text_format
 from printers.png import PngPrinter
 from printers import csv, console
 from caffe_parser import parse_caffe_net
-from transformers import inventory
+from transforms import reduce_transforms
 import topology
 import copy
 
@@ -63,8 +63,8 @@ def sum_blob_mem(tplgy, node, blobs, sum):
             sum[0] += out_edge.blob.size()
             blobs.append(out_edge.blob)
 
-from transformers.update_blobs_sizes import update_blobs_sizes
-from transformers import fold_transforms
+from transforms.update_blobs_sizes import update_blobs_sizes
+from transforms import fold_transforms
 
 def main():
     parser = argparse.ArgumentParser()
