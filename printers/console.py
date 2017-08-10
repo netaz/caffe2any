@@ -51,12 +51,13 @@ class ConsolePrinter:
         # print('\t%-20s%-3s Count=%-10d' % print_fn(layer, count))
         print(row_format.format(*(print_fn(node) + (count,))))
 
-    def print_inventory(self, tplgy):
+    def print_inventory(self, inventory):
         print("Inventory:\n----------")
-        node_types_cnt = tplgy.get_inventory()
-        for type in node_types_cnt:
-            print('\t%-20s%-3i' % (type, node_types_cnt[type]))
-        print("Total=", len(tplgy.nodes))
+        cnt = 0
+        for type in inventory:
+            print('\t%-20s%-3i' % (type, inventory[type]))
+            cnt += inventory[type]
+        print("Total=", cnt)
         print("")
 
     def print_unique(self, unique_layers_list):
@@ -72,4 +73,3 @@ class ConsolePrinter:
     def print_bfs(self, tplgy):
         tplgy.traverse(lambda node: print(str(node)),
                        lambda edge: print('\t' + str(edge)))
-

@@ -392,15 +392,13 @@ class PngPrinter(object):
             fid.write(self.draw_net(self.caffe_net, options['rankdir'], tplgy))
         print('Drawing net to %s' % self.output_image_file)
 
-    def print_inventory(self, tplgy):
-        self.draw_inventory(tplgy)
+    def print_inventory(self, inventory):
+        self.draw_inventory(inventory)
 
-    def draw_inventory(self, tplgy):
-        node_types_cnt = tplgy.get_inventory()
-
+    def draw_inventory(self, inventory):
         labels = []
         values = []
-        for type, count in node_types_cnt.items():
+        for type, count in inventory.items():
             labels.append(type)
             values.append(count)
         data = values

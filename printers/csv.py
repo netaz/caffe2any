@@ -134,12 +134,11 @@ class CsvPrinter:
 
     def get_MACs_to_BW(self, node, ofms_descriptor, tplgy):
         pass
-        
-    def print_inventory(self, tplgy):
-        node_types_cnt = tplgy.get_inventory()
+
+    def print_inventory(self, inventory):
         self.file.write('Type, Count\n')
-        for type in node_types_cnt:
-            line = type + ',' + str(node_types_cnt[type]) + '\n'
+        for type in inventory:
+            line = type + ',' + str(inventory[type]) + '\n'
             self.file.write(line)
         self.file.write('\n')
 

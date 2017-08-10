@@ -5,7 +5,7 @@ A set of classes to model a DL topology
 Todo: add find_input_blobs
 Todo: remove Node.layer
 """
-from collections import OrderedDict, Counter, deque
+from collections import OrderedDict, deque
 import math
 import copy
 
@@ -387,15 +387,6 @@ class Topology:
                 debug("deleted edge: " + str(edge))
                 self.edges.remove(edge)
                 return
-
-    def get_inventory(self):
-        """
-        Returns a {type: count} dictionary
-        """
-        node_cnt = []
-        self.traverse(lambda node: node_cnt.append(node.type))
-        return Counter(node_cnt)
-
 
     def get_start_node(self):
         #return self.nodes.values()[0]

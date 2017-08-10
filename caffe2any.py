@@ -117,11 +117,9 @@ def main():
     if args.display != None:
         for disp_opt in args.display.split(','):
             if disp_opt == 'inventory':
-                printer.print_inventory(tplgy)
+                printer.print_inventory( reduce_transforms.get_inventory(tplgy) )
             elif disp_opt == 'unique':
-                unique_nodes = {}
-                tplgy.traverse(lambda node: add_unique(node, unique_nodes))
-                printer.print_unique_all(unique_nodes)
+                printer.print_unique_all( reduce_transforms.get_uniques_inventory(tplgy) )
             elif disp_opt == 'output':
                 print("outputs:")
                 outputs = tplgy.find_output_blobs()
