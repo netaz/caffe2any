@@ -26,28 +26,9 @@ from caffe_parser import parse_caffe_net
 from transforms import reduce_transforms
 import topology
 import copy
+import yaml
 
 DEBUG = False
-# options
-options = {
-    # Merges Convolution and ReLU nodes. This makes for a more compact and readable graph.
-    'merge_conv_relu': True,
-    # Merges Convolution, ReLU, and Pooling nodes.
-    'merge_conv_relu_pooling': False,
-    # Merges InnerProduct and ReLU nodes. This makes for a more compact and readable graph.
-    'merge_ip_relu': True,
-    # For Test/Inference networks, Dropout nodes are not interesting and can be removed for readability
-    'remove_dropout': True,
-    # For Test/Inference networks, Batch Normalization nodes can sometimes be removed.  This is
-    # explained by TensorFlow documentation:
-    # https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md#fold_batch_norms
-    # TODO: change the implementation so that BN is removed only if we recognize the CONV + BN pattern
-    'fold_batchnorm': True,
-    # Fold the scale layer into the convolution weights
-    # TODO: change the implementation so that BN is removed only if we recognize the CONV + Scale pattern
-    'fold_scale': True,
-}
-
 
 def debug(str):
     if DEBUG:
@@ -65,6 +46,22 @@ def sum_blob_mem(tplgy, node, blobs, sum):
 
 from transforms.update_blobs_sizes import update_blobs_sizes
 from transforms import fold_transforms
+
+def apply_transforms(prefs, tplgy):
+    ''' Handle optional transform processing on the topology
+    '''
+    if prefs['remove_dropout']:
+        tplgy.remove_node_by_type('Dropout')
+    if prefs['fold_batchnorm']:
+        fold_transforms.fold_pair(tplgy, 'Convolution', 'BatchNorm')
+    if prefs['fold_scale']:
+        fold_transforms.fold_pair(tplgy, 'Convolution', 'Scale')
+
+    if prefs['merge_conv_relu']:
+        tplgy.merge_nodes('Convolution', 'ReLU', 'Convolution_ReLU')
+
+    if prefs['merge_ip_relu']:
+        tplgy.merge_nodes('InnerProduct', 'ReLU', 'InnerProduct_ReLU')
 
 def main():
     parser = argparse.ArgumentParser()
@@ -87,30 +84,22 @@ def main():
     # calculate BLOBs sizes
     tplgy.traverse(lambda node: update_blobs_sizes(tplgy, node))
 
-    # Handle optional processing on the topology
-    if options['remove_dropout']:
-        tplgy.remove_node_by_type('Dropout')
-    if options['fold_batchnorm']:
-        fold_transforms.fold_pair(tplgy, 'Convolution', 'BatchNorm')
-    if options['fold_scale']:
-        fold_transforms.fold_pair(tplgy, 'Convolution', 'Scale')
+    # read preferences
+    with open("caffe2any_cfg.yml", 'r') as cfg_file:
+        prefs = yaml.load(cfg_file)
 
-    if options['merge_conv_relu']:
-        tplgy.merge_nodes('Convolution', 'ReLU', 'Convolution_ReLU')
-
-    if options['merge_ip_relu']:
-        tplgy.merge_nodes('InnerProduct', 'ReLU', 'InnerProduct_ReLU')
+    apply_transforms(prefs['transforms'], tplgy)
 
     # This is a temp bug-bypass
     if args.printer == 'png':
-        if options['merge_conv_relu_pooling']:
+        if prefs['transforms']['merge_conv_relu_pooling']:
             tplgy.merge_nodes('Convolution_ReLU', 'Pooling', 'Convolution_ReLU_Pooling')
 
     # tplgy.dump_edges()
     if args.printer == 'console':
         printer = console.ConsolePrinter()
     elif args.printer == 'png':
-        printer = PngPrinter(args, net)
+        printer = PngPrinter(args, prefs['png'], net)
     else:
         printer = csv.CsvPrinter(args.infile + '.csv')
 

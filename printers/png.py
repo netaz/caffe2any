@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import copy
 import topology
 from sys import exit
-
+import yaml
 """
 pydot is not supported under python 3 and pydot2 doesn't work properly.
 pydotplus works nicely (pip install pydotplus)
@@ -16,142 +16,7 @@ try:
 except ImportError:
     import pydot
 
-# options
-default_options = {
-    'verbose': True,
-    # The node label refers to the text that is inside each node in the graph
-    'node_label': 'custom', # {'custom', 'caffe', 'minimal'}
-    # Annotate the edges with the BLOB sizes
-    'label_edges': True,
-    # Graph drawing direction: left-right, top-bottom, bottom-top
-    'rankdir': 'TB',  # {'LR', 'TB', 'BT'}
-    # Draw cluster bounding boxes
-    'draw_clusters': True,
-    # The separator character for parsing a node name to cluster_name-separator-node
-    # (only relevant if draw_clusters is True)
-    'cluster_name_separator': '/',
-    # Generate a dot file (useful for debugging dot generation errors
-    'gen_dot_file': True,
-}
-
-google_options = {
-    'verbose': False,
-    # The node label refers to the text that is inside each node in the graph
-    'node_label': 'custom', # {'custom', 'caffe', 'minimal'}
-    # Annotate the edges with the BLOB sizes
-    'label_edges': True,
-    # Graph drawing direction: left-right, top-bottom, bottom-top
-    'rankdir': 'LR',  # {'LR', 'TB', 'BT'}
-    # Draw cluster bounding boxes
-    'draw_clusters': True,
-    # The separator character for parsing a node name to cluster_name-separator-node
-    # (only relevant if draw_clusters is True)
-    'cluster_name_separator': '/',
-    # Generate a dot file (useful for debugging dot generation errors
-    'gen_dot_file': True,
-}
-
-# Themes
-CAFFE_THEME = {
-    'layer_default': {'shape': 'record',
-                      'fillcolor': '#6495ED',
-                      'style': 'filled'},
-
-    'Convolution':  {'shape': 'record',
-                     'fillcolor': '#FF5050',
-                     'style': 'filled'},
-
-    'Pooling':      {'shape': 'record',
-                     'fillcolor': '#FF9900',
-                     'style': 'filled'},
-
-    'InnerProduct': {'shape': 'record',
-                     'fillcolor': '#CC33FF',
-                     'style': 'filled'},
-}
-
-SOFT_THEME = {
-    'layer_default': {'shape': 'record',
-                      'fillcolor': '#6495ED',
-                      'style': 'rounded, filled'},
-
-    'Convolution':   {'shape': 'record',
-                      'fillcolor': '#FF5050',
-                      'style': 'rounded, filled'},
-
-    'Pooling':       {'shape': 'record',
-                      'fillcolor': '#FF9900',
-                      'style': 'rounded, filled'},
-
-    'InnerProduct':  {'shape': 'record',
-                      'fillcolor': '#CC33FF',
-                      'style': 'rounded, filled'},
-
-    'InnerProduct_ReLU': {'shape': 'record',
-                     'fillcolor': '#CC33FF',
-                     'style': 'rounded, filled'},
-
-    'Concat':        {'shape': 'box3d',
-                      'fillcolor': 'gray',
-                      'style': 'filled'},
-
-    'Softmax':        {'shape': 'record',
-                      'fillcolor': 'yellow',
-                      'style': 'rounded, filled'},
-
-    'Convolution_ReLU':{'shape': 'record',
-                      'fillcolor': 'coral3',
-                      'style': 'rounded, filled'},
-
-    'Convolution_ReLU_Pooling':
-                      {'shape': 'record',
-                       'fillcolor': 'darkslategray',
-                       'style': 'rounded, filled'},
-
-}
-
-# http://designpieces.com/palette/google-new-logo-2015-color-palette-hex-and-rgb/
-GOOGLE_THEME = {
-    'layer_default': {'shape': 'record',
-                      'fillcolor': '#3cba54',
-                      'style': 'filled'},
-
-    'Convolution':   {'shape': 'record',
-                      'fillcolor': '#4885ed',
-                      'style': 'filled'},
-
-    'Pooling':       {'shape': 'record',
-                      'fillcolor': '#db3236',
-                      'style': 'filled'},
-
-    'InnerProduct': dict(shape='record', fillcolor='#4885ed', style='filled'),
-    'InnerProduct_ReLU': dict(shape='record', fillcolor='#4885ed', style='filled'),
-
-    'Softmax':        {'shape': 'record',
-                      'fillcolor': '#f4c20d',
-                      'style': 'filled'},
-
-    'SoftmaxWithLoss': dict(shape='record', fillcolor='#f4c20d', style='filled'),
-
-    'Convolution_ReLU':{'shape': 'record',
-                      'fillcolor': '#4885ed',
-                      'style': 'filled'},
-
-    'Convolution_ReLU_Pooling':
-                      {'shape': 'record',
-                       'fillcolor': '#4885ed',
-                       'style': 'filled'},
-    'Input': dict(shape='octagon', fillcolor='lightgray', style='filled'),
-
-}
-
-# theme = CAFFE_THEME
-theme = SOFT_THEME
-#theme = GOOGLE_THEME
-options = google_options
-#options = default_options
-
-def choose_style_by_layertype(layertype):
+def choose_style_by_layertype(layertype, theme):
     try:
         layer_style = theme[layertype]
     except:
@@ -163,12 +28,14 @@ def choose_style_by_layertype(layertype):
 class PngPrinter(object):
     """The printer prints to PNG files"""
 
-    def __init__(self, args, net):
+    def __init__(self, args, png_prefs, net):
         self.output_image_file = args.infile + '.png'
         self.output_inventory_file = args.infile + '_inventory.png'
         self.caffe_net = net
         self.pydot_nodes = {}
         self.pydot_edges = []
+        self.__prefs = png_prefs[png_prefs['preferences']]
+        self.__theme = png_prefs[png_prefs['theme']]
 
     @staticmethod
     def get_node_label(node, separator, format):
@@ -191,7 +58,7 @@ class PngPrinter(object):
         }
 
         printer = layers.get(node.type, PngPrinter.print_default)
-        node_label = printer(node, separator, options['node_label'])
+        node_label = printer(node, separator, format)
         return node_label
 
     @staticmethod
@@ -295,7 +162,7 @@ class PngPrinter(object):
         return node_label
 
     def add_pydot_node(self, node, tplgy, rankdir):
-        layer_style = choose_style_by_layertype(node.type)
+        layer_style = choose_style_by_layertype(node.type, self.__theme)
         if rankdir in ('TB', 'BT'):
             # If graph orientation is vertical, horizontal space is free and
             # vertical space is not; separate words with spaces
@@ -305,7 +172,7 @@ class PngPrinter(object):
             # horizontal space is not; separate words with newlines
             separator = '\\n'
 
-        node_label = self.get_node_label(node, separator, options['node_label'])
+        node_label = self.get_node_label(node, separator, self.__prefs['node_label'])
         #print('[png_printer] adding node: ', node.name)
         self.pydot_nodes[node.name] = pydot.Node(node_label, **layer_style)
 
@@ -313,7 +180,7 @@ class PngPrinter(object):
         if (edge.src_node is None) or (edge.dst_node is None):
             return
 
-        if options['label_edges'] and edge.blob != None:
+        if self.__prefs['label_edges'] and edge.blob != None:
             edge_label = str(edge.blob.shape) #get_edge_label(edge.src_node)
         else:
             edge_label = '""'
@@ -326,7 +193,7 @@ class PngPrinter(object):
     def draw_clusters(self, pydot_graph):
         clusters = {}
         for node_name, pydot_node in self.pydot_nodes.items():
-            separator = options['cluster_name_separator']
+            separator = self.__prefs['cluster_name_separator']
             if node_name.find(separator) > 0:
                 cluster_name = node_name[0:node_name.find(separator)]
             else:
@@ -365,7 +232,7 @@ class PngPrinter(object):
 
         # Cluster nodes by name prefix
         # add the nodes and edges to the graph.
-        if options['draw_clusters']:
+        if self.__prefs['draw_clusters']:
             self.draw_clusters(pydot_graph)
         else:   # not clustering
             for pydot_node in iter(self.pydot_nodes.values()):
@@ -382,14 +249,14 @@ class PngPrinter(object):
                            label=edge['label']))
 
         print("Number of nodes:", len(self.pydot_nodes))
-        if options['gen_dot_file']:
+        if self.__prefs['gen_dot_file']:
             print('Generating dot file')
             pydot_graph.write_raw('debug.dot')
         return pydot_graph.create_png()
 
     def print_bfs(self, tplgy):
         with open(self.output_image_file, 'wb') as fid:
-            fid.write(self.draw_net(self.caffe_net, options['rankdir'], tplgy))
+            fid.write(self.draw_net(self.caffe_net, self.__prefs['rankdir'], tplgy))
         print('Drawing net to %s' % self.output_image_file)
 
     def print_inventory(self, inventory):
