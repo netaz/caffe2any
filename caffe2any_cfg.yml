@@ -1,0 +1,148 @@
+transforms:
+    # Merges Convolution and ReLU nodes. This makes for a more compact and readable graph.
+    'merge_conv_relu': True
+    # Merges Convolution, ReLU, and Pooling nodes.
+    'merge_conv_relu_pooling': False
+    # Merges InnerProduct and ReLU nodes. This makes for a more compact and readable graph.
+    'merge_ip_relu': True
+    # For Test/Inference networks, Dropout nodes are not interesting and can be removed for readability
+    'remove_dropout': True
+    # For Test/Inference networks, Batch Normalization nodes can sometimes be removed.  This is
+    # explained by TensorFlow documentation:
+    # https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md#fold_batch_norms
+    # TODO: change the implementation so that BN is removed only if we recognize the CONV + BN pattern
+    'fold_batchnorm': True
+    # Fold the scale layer into the convolution weights
+    # TODO: change the implementation so that BN is removed only if we recognize the CONV + Scale pattern
+    'fold_scale': True
+
+png:
+    # Choose PNG preferences
+    'preferences': 'google_presets'
+    # Choose theme
+    'theme' : 'SoftTheme'
+
+    # preferences
+    default_preferences:
+        'verbose': True
+        # The node label refers to the text that is inside each node in the graph
+        'node_label': 'custom' # {'custom', 'caffe', 'minimal'}
+        # Annotate the edges with the BLOB sizes
+        'label_edges': True
+        # Graph drawing direction: left-right, top-bottom, bottom-top
+        'rankdir': 'TB'  # {'LR', 'TB', 'BT'}
+        # Draw cluster bounding boxes
+        'draw_clusters': True
+        # The separator character for parsing a node name to cluster_name-separator-node
+        # (only relevant if draw_clusters is True)
+        'cluster_name_separator': '/'
+        # Generate a dot file (useful for debugging dot generation errors
+        'gen_dot_file': True
+
+    google_presets:
+        'verbose': False
+        'node_label': 'custom' # {'custom', 'caffe', 'minimal'}
+        'label_edges': True
+        'rankdir': 'LR'  # {'LR', 'TB', 'BT'}
+        'draw_clusters': True
+        'cluster_name_separator': '/'
+        'gen_dot_file': True
+
+    # Themes
+    CaffeTheme:
+        'layer_default':
+            'shape': 'record'
+            'fillcolor': '#6495ED'
+            'style': 'filled'
+        'Convolution':
+            'shape': 'record'
+            'fillcolor': '#FF5050'
+            'style': 'filled'
+        'Pooling':
+            'shape': 'record'
+            'fillcolor': '#FF9900'
+            'style': 'filled'
+        'InnerProduct':
+            'shape': 'record'
+            'fillcolor': '#CC33FF'
+            'style': 'filled'
+
+    SoftTheme:
+        'layer_default':
+            'shape': 'record'
+            'fillcolor': '#6495ED'
+            'style': 'rounded, filled'
+        'Convolution':
+            'shape': 'record'
+            'fillcolor': '#FF5050'
+            'style': 'rounded, filled'
+        'Pooling':
+            'shape': 'record'
+            'fillcolor': '#FF9900'
+            'style': 'rounded, filled'
+        'InnerProduct':
+            'shape': 'record'
+            'fillcolor': '#CC33FF'
+            'style': 'rounded, filled'
+        'InnerProduct_ReLU':
+            'shape': 'record'
+            'fillcolor': '#CC33FF'
+            'style': 'rounded, filled'
+        'Concat':
+            'shape': 'box3d'
+            'fillcolor': 'gray'
+            'style': 'filled'
+        'Softmax':
+            'shape': 'record'
+            'fillcolor': 'yellow'
+            'style': 'rounded, filled'
+        'Convolution_ReLU':
+            'shape': 'record'
+            'fillcolor': 'coral3'
+            'style': 'rounded, filled'
+        'Convolution_ReLU_Pooling':
+            'shape': 'record'
+            'fillcolor': 'darkslategray'
+            'style': 'rounded, filled'
+    # http://designpieces.com/palette/google-new-logo-2015-color-palette-hex-and-rgb/
+    GoogleTheme:
+        'layer_default':
+            'shape': 'record'
+            'fillcolor': '#3cba54'
+            'style': 'filled'
+        'Convolution':
+            'shape': 'record'
+            'fillcolor': '#4885ed'
+            'style': 'filled'
+        'Pooling':
+            'shape': 'record'
+            'fillcolor': '#db3236'
+            'style': 'filled'
+        'InnerProduct':
+            'shape': 'record'
+            'fillcolor': '#4885ed'
+            'style': 'filled'
+        'InnerProduct_ReLU':
+            'shape': 'record'
+            'fillcolor': '#4885ed'
+            'style': 'filled'
+        'Softmax':
+            'shape': 'record'
+            'fillcolor': '#f4c20d'
+            'style': 'filled'
+        'SoftmaxWithLoss':
+            'shape': 'record'
+            'fillcolor': '#f4c20d'
+            'style': 'filled'
+        'Convolution_ReLU':
+            'shape': 'record'
+            'fillcolor': '#4885ed'
+            'style': 'filled'
+        'Convolution_ReLU_Pooling':
+            'shape': 'record'
+            'fillcolor': '#4885ed'
+            'style': 'filled'
+        'Input':
+            'shape': 'octagon'
+            'fillcolor': 'lightgray'
+            'style': 'filled'
