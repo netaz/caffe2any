@@ -298,30 +298,30 @@ class Topology:
         Keep the the vertices ordered by insertion, so that we have
         a starting point
         """
-        self.nodes = OrderedDict()
-        self.blobs = {}
-        self.edges = []
-        self.first_node = None
+        self.__nodes = OrderedDict()
+        self.__blobs = {}
+        self.__edges = []
+        self.__first_node = None
 
     def dump_edges(self):
         print('Dumping edges')
         print('-----------------------------------------')
-        for edge in self.edges:
+        for edge in self.__edges:
             print(str(edge))
 
     def add_node(self, name, type, layer, role):
         new_node = node_factory(name, type, layer, role)
-        self.nodes[name] = new_node
-        if self.first_node is None:
-            self.first_node = new_node
+        self.__nodes[name] = new_node
+        if self.__first_node is None:
+            self.__first_node = new_node
         debug('created Node:' + name)
         return new_node
 
     def add_nodes(self, nodes_to_add):
         for node in nodes_to_add:
-            self.nodes[node.name] = node
-            if self.first_node is None:
-                self.first_node = node
+            self.__nodes[node.name] = node
+            if self.__first_node is None:
+                self.__first_node = node
             debug('created Node:' + node.name)
 
     def del_nodes(self, nodes_to_del):
@@ -337,10 +337,10 @@ class Topology:
         for edge in outgoing_edges:
             self.del_edge(edge)
         # Fix the first_node pointer
-        if self.first_node == node:
-            self.first_node = None
+        if self.__first_node == node:
+            self.__first_node = None
         # Finally, delete the node and change its name (for debug)
-        del self.nodes[node.name]
+        del self.__nodes[node.name]
         node.name = node.name + "[DELETED]"
 
     def remove_nodes(self, nodes):
@@ -362,8 +362,8 @@ class Topology:
         done = False
         while not done:
             done = True
-            for node_name in list(self.nodes.keys()):
-                node = self.nodes[node_name]
+            for node_name in list(self.__nodes.keys()):
+                node = self.__nodes[node_name]
                 if node.type != type_to_remove:
                     continue
                 self.remove_node(node)
@@ -371,42 +371,42 @@ class Topology:
 
     def add_blob(self, name, shape, producer):
         new_blob = BLOB(name, shape, producer)
-        self.blobs[name] = new_blob
+        self.__blobs[name] = new_blob
         debug('created:' + str(new_blob))
         return new_blob
 
     def add_edge(self, src, dst, blob):
         new_edge = Edge(src, dst, blob)
-        self.edges.append(new_edge)
+        self.__edges.append(new_edge)
         debug('created edge:' + str(new_edge))
         return new_edge
 
     def del_edge(self, edge_to_del):
-        for edge in self.edges:
+        for edge in self.__edges:
             if edge == edge_to_del:
                 debug("deleted edge: " + str(edge))
-                self.edges.remove(edge)
+                self.__edges.remove(edge)
                 return
 
     def get_start_node(self):
-        #return self.nodes.values()[0]
-        return self.first_node
+        #return self.__nodes.values()[0]
+        return self.__first_node
 
     def find_blob_by_name(self, name):
-        if name not in self.blobs:
+        if name not in self.__blobs:
             return None
-        return self.blobs[name]
+        return self.__blobs[name]
 
     def find_outgoing_edges(self, node):
         edges = []
-        for edge in self.edges:
+        for edge in self.__edges:
             if (edge.is_deleted is False) and (edge.src_node != None) and (edge.src_node.name == node.name):
                 edges.append(edge)
         return edges
 
     def find_incoming_edges(self, node):
         edges = []
-        for edge in self.edges:
+        for edge in self.__edges:
             if (edge.is_deleted is False) and (edge.dst_node != None) and (edge.dst_node.name == node.name):
                 edges.append(edge)
         return edges
@@ -416,9 +416,9 @@ class Topology:
     # TODO: THIS HAS A BUG (Works only the first time!!!!)
     def find_output_blobs(self):
         blobs = []
-        for blob in self.blobs:
+        for blob in self.__blobs:
             blob_has_consumer = False
-            for edge in self.edges:
+            for edge in self.__edges:
                 if edge.blob.name == blob:
                     blob_has_consumer = True
                     continue
@@ -428,9 +428,9 @@ class Topology:
 
     def find_subgraph_pair(self, node1_type, node2_type):
         pairs = []
-        for node_name in self.nodes:
+        for node_name in self.__nodes:
             # Search for a matching pair of nodes, by node types
-            node1 = self.nodes[node_name]
+            node1 = self.__nodes[node_name]
             if node1.type != node1_type:
                 continue
             outgoing_edges = self.find_outgoing_edges(node1)
@@ -464,10 +464,10 @@ class Topology:
 
     def traverse_blobs(self, blob_cb):
         done = []
-        for blob in self.blobs:
+        for blob in self.__blobs:
             if blob in done:
                 continue
-            blob_cb(self.blobs[blob])
+            blob_cb(self.__blobs[blob])
 
     def traverse(self, node_cb, edge_cb=None):
         """
