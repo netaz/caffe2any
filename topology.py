@@ -444,7 +444,7 @@ class Topology:
             pairs.append([node1, node2])
         return pairs
 
-    def merge_nodes(self, node1_type, node2_type, merged_node_type):
+    def merge_nodes(self, node1_type, node2_type):
         ''' Merge two nodes together
         '''
         pairs = self.find_subgraph_pair(node1_type, node2_type)
