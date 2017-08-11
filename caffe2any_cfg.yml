@@ -15,6 +15,7 @@ transforms:
     # Fold the scale layer into the convolution weights
     # TODO: change the implementation so that BN is removed only if we recognize the CONV + Scale pattern
     'fold_scale': True
+    'merge_sum_relu': False
 
 png:
     # Choose PNG preferences

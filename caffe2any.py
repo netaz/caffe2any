@@ -56,12 +56,12 @@ def apply_transforms(prefs, tplgy):
         fold_transforms.fold_pair(tplgy, 'Convolution', 'BatchNorm')
     if prefs['fold_scale']:
         fold_transforms.fold_pair(tplgy, 'Convolution', 'Scale')
-
     if prefs['merge_conv_relu']:
         tplgy.merge_nodes('Convolution', 'ReLU', 'Convolution_ReLU')
-
     if prefs['merge_ip_relu']:
         tplgy.merge_nodes('InnerProduct', 'ReLU', 'InnerProduct_ReLU')
+    if prefs['merge_sum_relu']:
+        tplgy.merge_nodes('Eltwise', 'ReLU', 'XXX')
 
 def main():
     parser = argparse.ArgumentParser()
