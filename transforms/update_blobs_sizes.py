@@ -2,6 +2,7 @@
 of each of the nodes.
 
 """
+import copy
 
 def update_blobs_sizes(tplgy, node):
     #print('updating node:' + node.name)

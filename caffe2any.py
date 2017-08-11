@@ -25,7 +25,6 @@ from printers import csv, console
 from caffe_parser import parse_caffe_net
 from transforms import reduce_transforms
 import topology
-import copy
 import yaml
 
 DEBUG = False
