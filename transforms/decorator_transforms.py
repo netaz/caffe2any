@@ -27,7 +27,7 @@ def __get_ifm_size(node, tplgy):
         ifm_shape = edges[0].blob.shape
         return (ifm_shape[1] * ifm_shape[2] * ifm_shape[3])
     else:
-        return ''
+        return 0
 
 def __get_weight_size(node, tplgy):
     edges = tplgy.find_incoming_edges(node)
@@ -102,7 +102,16 @@ def __get_MACs(node, ofms_descriptor, tplgy):
         return node.get_MACs()#(ofms_descriptor, num_ifms)
 
 def __add_macs_annotations(edge, tplgy):
-    edge.src_node.set_attr('macs', __get_MACs(edge.src_node, edge.blob.shape, tplgy))
+    macs = __get_MACs(edge.src_node, edge.blob.shape, tplgy)
+    edge.src_node.set_attr('macs',macs)
+
+    node = edge.src_node
+    bw = node.get_attr('weight_size') if node.get_attr('weight_size') is not None else 0
+    bw += (node.get_attr('bias_size'))
+    bw += (node.get_attr('ifm_size'))
+    bw += (node.get_attr('ofm_size'))
+    node.set_attr('bw', bw)
+    node.set_attr('macs/bw', macs/bw)
 
 def add_macs_annotations(tplgy):
     done_blobs = []

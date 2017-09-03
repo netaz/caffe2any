@@ -10,7 +10,7 @@ class CsvPrinter:
         self.done_blobs = []
         # TODO - READ THIS FROM CONFIGURATION
         self.cols = ['Node', 'Type', 'Node Details', 'IFMz', 'IFMy', 'IFMx', 'OFMz', 'OFMy', 'OFMx',
-                     'IFM Volume (elems)', 'OFM Volume (elems)', 'Weights Volume (elems)', 'Bias Volume (elems)', 'MACs', 'kaki']
+                     'IFM Volume (elems)', 'OFM Volume (elems)', 'Weights Volume (elems)', 'Bias Volume (elems)', 'BW', 'MACs', 'MACs/element']
 
     def print_pool(self, node):
         desc = "Pool," + pooling_type[node.pool_type] + ' k=' + str(node.kernel_size) + "x" + str(
@@ -111,8 +111,9 @@ class CsvPrinter:
             'OFM Volume (elems)': str(edge.src_node.get_attr('ofm_size')),
             'Weights Volume (elems)': str(edge.src_node.get_attr('weights_size')),
             'Bias Volume (elems)': str(edge.src_node.get_attr('bias_size')),
+            'BW': str(edge.src_node.get_attr('bw')),
             'MACs': str(edge.src_node.get_attr('macs')),
-            'kaki': str(edge.src_node.get_attr('kaki'))
+            'MACs/element': str(edge.src_node.get_attr('macs/bw'))
         }
         return col_handlers
 

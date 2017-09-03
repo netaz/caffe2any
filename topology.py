@@ -56,7 +56,7 @@ class Node:
         try:
             return self.attributes[name]
         except KeyError:
-            return 'N/A'
+            return None
 
     def set_attr(self, name, val):
         self.attributes[name] = val
