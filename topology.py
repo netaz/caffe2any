@@ -27,6 +27,7 @@ class Node:
         self.name = name
         self.type = type
         self.role = role
+        self.attributes = {}
 
     def __str__(self):
         return self.name + '(' + self.type + ')'
@@ -50,6 +51,15 @@ class Node:
 
     def get_MACs(self):
         return 0
+
+    def get_attr(self, name):
+        try:
+            return self.attributes[name]
+        except KeyError:
+            return 'N/A'
+
+    def set_attr(self, name, val):
+        self.attributes[name] = val
 
 class PoolingNode(Node):
     def __init__(self, name, type, layer):

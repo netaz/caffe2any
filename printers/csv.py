@@ -1,5 +1,6 @@
 from .globals import *
 pooling_type = get_pooling_types_dict()
+from transforms import decorator_transforms
 
 class CsvPrinter:
     """A CSV file printer"""
@@ -7,9 +8,9 @@ class CsvPrinter:
     def __init__(self, fname):
         self.file = open(fname, "wt")
         self.done_blobs = []
-        # TODO - make this constants so they can be reused
+        # TODO - READ THIS FROM CONFIGURATION
         self.cols = ['Node', 'Type', 'Node Details', 'IFMz', 'IFMy', 'IFMx', 'OFMz', 'OFMy', 'OFMx',
-                     'IFM Volume (elems)', 'OFM Volume (elems)', 'Weights Volume (elems)', 'Bias Volume (elems)', 'MACs']
+                     'IFM Volume (elems)', 'OFM Volume (elems)', 'Weights Volume (elems)', 'Bias Volume (elems)', 'MACs', 'kaki']
 
     def print_pool(self, node):
         desc = "Pool," + pooling_type[node.pool_type] + ' k=' + str(node.kernel_size) + "x" + str(
@@ -65,72 +66,6 @@ class CsvPrinter:
         else:
             return ',,'
 
-    def get_weight_size(self, node, tplgy):
-        edges = tplgy.find_incoming_edges(node)
-        if node.type in ['Convolution', 'Convolution_ReLU']:
-            assert (len(edges) == 1)
-            num_ifms = edges[0].blob.shape[1]
-            if node.type == 'Convolution_ReLU':
-                node = node.node1
-            return node.kernel_size * node.kernel_size * node.num_output * num_ifms
-        elif node.type in ['InnerProduct', 'InnerProduct_ReLU']:
-            assert (len(edges) == 1)
-            if node.type == 'InnerProduct_ReLU':
-                return (self.get_ifm_size(node, tplgy) * node.node1.num_output)
-            else:
-                return (self.get_ifm_size(node, tplgy) * node.num_output)
-        else:
-            return 0
-
-    # todo: move this to Topology (per Node class)
-    def get_bias_size(self, node, tplgy):
-        if node.type in ['Convolution', 'InnerProduct']:
-            return node.num_output
-        if node.type in ['Convolution_ReLU', 'InnerProduct_ReLU']:
-            return node.node1.num_output
-        else:
-            return 0
-
-    # todo: move this to Topology (per Node class)
-    def get_ifm_size(self, node, tplgy):
-        edges = tplgy.find_incoming_edges(node)
-        if node.type in ['Convolution', 'Convolution_ReLU', 'Pooling', 'LRN', 'Softmax']:
-            assert (len(edges) == 1)
-            ifm = edges[0].blob
-            return ifm.size()
-        elif node.type in ['Eltwise']:
-            # Eltwise has two inputs of equal dimensions
-            assert (len(edges) == 2)
-            ifm = edges[0].blob
-            return ifm.size() * 2
-        elif node.type in ['InnerProduct', 'InnerProduct_ReLU']:
-            if len(edges) != 1:
-                print("node %s (%s) has an unexpected number of edges (%d edges)" % (node.name, node.get_type(), len(edges)))
-            assert (len(edges) == 1)
-            ifm_shape = edges[0].blob.shape
-            return (ifm_shape[1] * ifm_shape[2] * ifm_shape[3])
-        else:
-            return ''
-
-    def get_ofm_size(self, edge):
-        ofm_size = 0
-        if edge.blob.shape and edge.src_node.role != "Modifier":
-            ofm_size = edge.blob.size()
-        return ofm_size
-
-    # todo: move this to Topology (per Node class)
-    def get_MACs(self, node, ofms_descriptor, tplgy):
-        if node.type in ['Convolution', 'Convolution_ReLU']:
-            edges = tplgy.find_incoming_edges(node)
-            assert (len(edges) == 1)
-            num_ifms = edges[0].blob.shape[1]
-            if node.type == 'Convolution_ReLU':
-                node = node.node1
-            return node.get_MACs(ofms_descriptor, num_ifms)
-        elif node.type in ['InnerProduct', 'InnerProduct_ReLU']:
-            return self.get_weight_size(node, tplgy)
-        else:
-            return node.get_MACs()#(ofms_descriptor, num_ifms)
 
     def get_MACs_to_BW(self, node, ofms_descriptor, tplgy):
         pass
@@ -153,6 +88,9 @@ class CsvPrinter:
         self.file.write('\n')
 
     def print_bfs(self, tplgy):
+        decorator_transforms.add_size_annotations(tplgy)
+        decorator_transforms.add_macs_annotations(tplgy)
+
         self.file.write(', '.join(self.cols))
         self.file.write('\n')
         tplgy.traverse(None, lambda edge: self.print_edge_cb(edge, tplgy))
@@ -169,11 +107,12 @@ class CsvPrinter:
             'OFMz': (str(edge.blob.shape[1]) if edge.blob.shape else ''),  # OFMz
             'OFMy': (str(edge.blob.shape[2]) if edge.blob.shape else ''),  # OFMy
             'OFMx': (str(edge.blob.shape[3]) if edge.blob.shape else ''),  # OFMx
-            'IFM Volume (elems)': str(self.get_ifm_size(edge.src_node, tplgy)),
-            'OFM Volume (elems)': str(self.get_ofm_size(edge)),
-            'Weights Volume (elems)': str(self.get_weight_size(edge.src_node, tplgy)),
-            'Bias Volume (elems)': str(self.get_bias_size(edge.src_node, tplgy)),
-            'MACs': str(self.get_MACs(edge.src_node, edge.blob.shape, tplgy)),
+            'IFM Volume (elems)':str(edge.src_node.get_attr('ifm_size')),
+            'OFM Volume (elems)': str(edge.src_node.get_attr('ofm_size')),
+            'Weights Volume (elems)': str(edge.src_node.get_attr('weights_size')),
+            'Bias Volume (elems)': str(edge.src_node.get_attr('bias_size')),
+            'MACs': str(edge.src_node.get_attr('macs')),
+            'kaki': str(edge.src_node.get_attr('kaki'))
         }
         return col_handlers
 
