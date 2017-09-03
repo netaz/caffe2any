@@ -8,11 +8,13 @@ I'm using Ubuntu 14.04.1.
    > conda install -c anaconda protobuf
 
 3. Install pydot.  pydot is not supported under python 3 and pydot2 doesn't work properly.
-   However, pydotplus works nicely.  To install with Anaconda:
-   > conda install -c conda-forge pydotplus 
-     
+   However, pydotplus works nicely.  To install with Anaconda (https://anaconda.org/conda-forge/pydotplus):
+   > conda install -c conda-forge pydotplus
+
    To install with pip:
    > pip install pydotplus
+
+   - You can find more information here:  http://www.installion.co.uk/ubuntu/precise/universe/p/python-pydot/install/index.html
 
 4. Install graphviz
    > sudo apt-get install graphviz

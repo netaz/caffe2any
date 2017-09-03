@@ -20,7 +20,7 @@ To parse prototxt files, I'm using Google's protobufs, obviuosly.  Since I was i
 - The included caffe_pb2.py was generated using protoc:
   $ protoc -I=.  --python_out=. ./caffe.proto
 
-usage:
+Usage:
 
 example(1):<br>
 $ python prototxt2csv.py examples/alexnet.deploy.prototxt  -p console -d mem,unique,inventory,output,bfs
@@ -34,7 +34,6 @@ $ python prototxt2csv.py examples/googlenetv1.deploy.prototxt -p png -d bfs
 prototxt2png: draw the prototxt networks without installing Caffe
 - I plan to retire this file, since I've incorporated its functionality into the main program.
 - This is motivated by the need to generate PNG files without installing Caffe.  It reuses the original Caffe code, with a few changes.
-- You will need to install pydot (instructions: http://www.installion.co.uk/ubuntu/precise/universe/p/python-pydot/install/index.html)
-I'm using Conda on Ubuntu so the installation is (https://anaconda.org/conda-forge/pydotplus):
-$ conda install -c conda-forge pydotplus=2.0.2
 
+Installation and dependencies:
+- See file DEPENDENCIES.md
