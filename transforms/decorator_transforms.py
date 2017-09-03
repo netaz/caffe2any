@@ -106,7 +106,7 @@ def __add_macs_annotations(edge, tplgy):
     edge.src_node.set_attr('macs',macs)
 
     node = edge.src_node
-    bw = node.get_attr('weight_size') if node.get_attr('weight_size') is not None else 0
+    bw = node.get_attr('weights_size') if node.get_attr('weights_size') is not None else 0
     bw += (node.get_attr('bias_size'))
     bw += (node.get_attr('ifm_size'))
     bw += (node.get_attr('ofm_size'))
