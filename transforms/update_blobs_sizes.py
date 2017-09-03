@@ -4,7 +4,7 @@ of each of the nodes.
 """
 import copy
 
-def update_blobs_sizes(tplgy, node):
+def __update_blobs_sizes(tplgy, node):
     #print('updating node:' + node.name)
     in_edges = tplgy.find_incoming_edges(node)
     out_edges = tplgy.find_outgoing_edges(node)
@@ -77,3 +77,6 @@ def update_blobs_sizes(tplgy, node):
             out_edges[0].blob.shape = in_edges[0].blob.shape
 
     return True
+
+def update_blobs_sizes(tplgy, node):
+    tplgy.traverse(lambda node: __update_blobs_sizes(tplgy, node))
