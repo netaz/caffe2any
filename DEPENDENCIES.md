@@ -1,15 +1,13 @@
 This file contains instructions for installing this project's external dependencies.
 I'm using Ubuntu 14.04.1.
 
-1. Install python 3.x
+1. Install python 3.x<br>
    I'm using  Anaconda.  You can find the official instruction here: https://docs.continuum.io/anaconda/install/linux.html
-
-2. Create and activate the Anaconda environment 
-   > conda env create -f environment.yml
-   > source activate caffe2any
-
-3. Install graphviz
-   > sudo apt-get install graphviz
+1. Create and activate the Anaconda environment<br> 
+`conda env create -f environment.yml`<br>
+`source activate caffe2any`
+1. Install graphviz<br>
+`sudo apt-get install graphviz`
 
 <br>
 <br>
