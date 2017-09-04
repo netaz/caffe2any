@@ -57,6 +57,8 @@ def apply_transforms(prefs, tplgy):
         fold_transforms.fold_pair(tplgy, 'Convolution', 'Scale')
     if prefs['merge_conv_relu']:
         tplgy.merge_nodes('Convolution', 'ReLU')
+    if prefs['merge_conv_relu_pooling']:
+        tplgy.merge_nodes('Convolution_ReLU', 'Pooling')
     if prefs['merge_ip_relu']:
         tplgy.merge_nodes('InnerProduct', 'ReLU')
     if prefs['merge_sum_relu']:
@@ -89,10 +91,6 @@ def main():
 
     apply_transforms(prefs['transforms'], tplgy)
 
-    # This is a temp bug-bypass
-    if args.printer == 'png':
-        if prefs['transforms']['merge_conv_relu_pooling']:
-            tplgy.merge_nodes('Convolution_ReLU', 'Pooling')
     # tplgy.dump_edges()
     if args.printer == 'console':
         printer = console.ConsolePrinter()
