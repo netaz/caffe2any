@@ -115,7 +115,6 @@ def main():
             elif disp_opt == 'mem':
                 sum = [0]
                 blobs = []
-                #tplgy.traverse_blobs(lambda blob: count_memory(blob, sum))
                 tplgy.traverse(lambda node: sum_blob_mem(tplgy, node, blobs, sum))
                 print("Total BLOB memory: " + str(sum[0]))
             else:
