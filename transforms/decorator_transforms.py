@@ -107,11 +107,20 @@ def __add_macs_annotations(edge, tplgy):
 
     node = edge.src_node
     bw = node.get_attr('weights_size') if node.get_attr('weights_size') is not None else 0
-    bw += (node.get_attr('bias_size'))
-    bw += (node.get_attr('ifm_size'))
-    bw += (node.get_attr('ofm_size'))
+    bw += node.get_attr('bias_size') if node.get_attr('bias_size') is not None else 0
+    bw += node.get_attr('ifm_size') if node.get_attr('ifm_size') is not None else 0
+    bw += node.get_attr('ofm_size') if node.get_attr('ofm_size') is not None else 0
     node.set_attr('bw', bw)
-    node.set_attr('macs/bw', macs/bw)
+    node.set_attr('macs/bw', macs/bw if bw>0 else 0)
+
+    # I'd like to add for Convolutions:
+    # (OFM_H * OFM_W) / (K*K)
+    # To show weights reuse - i.e. how many times a weight is used
+    #print(edge.blob.shape[2] * edge.blob.shape[3] / ())
+
+    # Also show input reuse
+    # (OFM_H * OFM_W) / IFM_SIZE
+    # All inputs are used
 
 def add_macs_annotations(tplgy):
     done_blobs = []
