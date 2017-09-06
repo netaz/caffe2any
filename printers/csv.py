@@ -52,7 +52,7 @@ class CsvPrinter:
             "Deconvolution": self.print_deconv,
             "LRN": self.print_lrn,
             "Eltwise": self.print_eltwise,
-        }.get(node.get_type(), self.print_unknown)
+        }.get(node.type, self.print_unknown)
         return print_fn(node)
 
     def print_ifms(self, node, tplgy):

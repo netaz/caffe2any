@@ -40,17 +40,8 @@ class Node:
     def is_same(this, other):
         return True
 
-    def get_type(self):
-        return self.type
-
-    def get_name(self):
-        return self.name
-
-    def get_role(self):
-        return self.role
-
     def get_MACs(self):
-        return 0
+            return 0
 
     def get_attr(self, name):
         try:
