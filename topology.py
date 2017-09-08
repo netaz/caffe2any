@@ -8,19 +8,15 @@ Todo: remove Node.layer
 from collections import OrderedDict, deque
 import math
 import copy
+import logging
+logger = None
 
-DEBUG = False
-DEBUG_TRANSFORM = False
-
-def debug(str):
-    if DEBUG:
-        print (str)
-
-
-def debug_tr(str):
-    if DEBUG_TRANSFORM:
-        print (str)
-
+def log():
+    global logger
+    if logger == None:
+        logger = logging.getLogger(__name__)
+    #print(__name__, logger)
+    return logger
 
 class Node:
     def __init__(self, name, type, role):
@@ -79,7 +75,7 @@ class PoolingNode(Node):
         self.ceiling = (ofmh_noceil != ofmh)
         ofm_shape[2] = int(ofmh)
         ofm_shape[3] = int(ofmw)
-        debug_tr(str(ifm_shape) + '--> ' + str(ofm_shape))
+        log().debug(str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
 
@@ -106,7 +102,7 @@ class ConvolutionNode(Node):
         ofmw = (ifmw - self.kernel_size + 2.0 * self.pad) / self.stride + 1
         ofm_shape[2] = int(ofmh)
         ofm_shape[3] = int(ofmw)
-        debug_tr(str(ifm_shape) + '--> ' + str(ofm_shape))
+        log().debug(str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
     def get_MACs(self, ofms_descriptor, num_ifms):
@@ -154,7 +150,7 @@ class DeconvolutionNode(Node):
         ofmw = self.stride * (ifmw - 1) + self.kernel_size - 2 * self.pad
         ofm_shape[2] = int(ofmh)
         ofm_shape[3] = int(ofmw)
-        debug_tr(str(ifm_shape) + '--> ' + str(ofm_shape))
+        log().debug(str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
 
@@ -167,7 +163,7 @@ class InnerProductNode(Node):
         ofm_shape = copy.deepcopy(ifm_shape)
         ofm_shape[3] = self.num_output  # ifm_shape[1] * ifm_shape[2] * ifm_shape[3]
         ofm_shape[1] = ofm_shape[2] = 1
-        debug_tr(str(ifm_shape) + '--> ' + str(ofm_shape))
+        log().debug(str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
 
@@ -315,7 +311,7 @@ class Topology:
         self.__nodes[name] = new_node
         if self.__first_node is None:
             self.__first_node = new_node
-        debug('created Node:' + name)
+        log().debug('created Node:' + name)
         return new_node
 
     def add_nodes(self, nodes_to_add):
@@ -323,7 +319,7 @@ class Topology:
             self.__nodes[node.name] = node
             if self.__first_node is None:
                 self.__first_node = node
-            debug('created Node:' + node.name)
+            log().debug('created Node:' + node.name)
 
     def del_nodes(self, nodes_to_del):
         for node in nodes_to_del:
@@ -373,19 +369,19 @@ class Topology:
     def add_blob(self, name, shape, producer):
         new_blob = BLOB(name, shape, producer)
         self.__blobs[name] = new_blob
-        debug('created:' + str(new_blob))
+        log().debug('created:' + str(new_blob))
         return new_blob
 
     def add_edge(self, src, dst, blob):
         new_edge = Edge(src, dst, blob)
         self.__edges.append(new_edge)
-        debug('created edge:' + str(new_edge))
+        log().debug('created edge:' + str(new_edge))
         return new_edge
 
     def del_edge(self, edge_to_del):
         for edge in self.__edges:
             if edge == edge_to_del:
-                debug("deleted edge: " + str(edge))
+                log().debug("deleted edge: " + str(edge))
                 self.__edges.remove(edge)
                 return
 
@@ -458,7 +454,7 @@ class Topology:
             node1_incoming_edges = self.find_incoming_edges(node1)
             for node1_incoming_edge in node1_incoming_edges:
                 self.add_edge(node1_incoming_edge.src_node, new_node, copy.deepcopy(node1_incoming_edge.blob))
-            debug("[merge_nodes] deleting nodes %s, %s" % (node1.name,node2.name))
+            log().debug("[merge_nodes] deleting nodes %s, %s" % (node1.name,node2.name))
             self.del_nodes([node1, node2])
             self.add_nodes([new_node])
         return
@@ -476,24 +472,24 @@ class Topology:
         """
         pending = deque([self.get_start_node()])    # The list of nodes waiting to be processed
         done = []                                   # The list of nodes we've already processed
-        debug('BFS: Starting traversal with node %s' % self.get_start_node())
+        log().debug('BFS: Starting traversal with node %s' % self.get_start_node())
         while len(pending) > 0:
             node = pending.popleft()
 
             # This is a modification of BFS: we mandate that all incoming edges
             # have been processed before processing the node to ensure processing order satisfies data dependency
-            debug('BFS: processing node: %s' %node.name)
+            log().debug('BFS: processing node: %s' %node.name)
             incoming_edges = self.find_incoming_edges(node)
             all_in_edges_were_processed = True
             for edge in incoming_edges:
                 if edge.src_node and edge.src_node not in done:
                     all_in_edges_were_processed = False
-                    debug("BFS: %s is waiting for %s" % (node.name, edge.src_node.name))
+                    log().debug("BFS: %s is waiting for %s" % (node.name, edge.src_node.name))
             if all_in_edges_were_processed is False:
                 continue
 
             done.append(node)
-            debug("BFS: done with %s" % node.name)
+            log().debug("BFS: done with %s" % node.name)
             if node_cb is not None:
                 # TODO: this can probably be removed after adding the data-dependency constraint
                 # Node callback can indicate failure, in which case we try again later
@@ -508,7 +504,7 @@ class Topology:
                 if edge_cb is not None:
                     exit = edge_cb(edge)
                     if exit:
-                        debug("BFS: abrupt traversal exit requested by edge", str(edge))
+                        log().debug("BFS: abrupt traversal exit requested by edge", str(edge))
                         return
 
             # Add new nodes to visit.  We do this as a separate step from the edge-callbacks,
@@ -518,7 +514,7 @@ class Topology:
             for edge in outgoing_edges:
                 if (edge.dst_node is not None) and (edge.dst_node not in done) and edge.dst_node not in pending:
                     pending.append(edge.dst_node)
-                    debug('BFS: adding node: %s' % edge.dst_node.name)
+                    log().debug('BFS: adding node: %s' % edge.dst_node.name)
                 elif edge.dst_node is not None:
-                    debug('BFS: ignoring  node: %s' % edge.dst_node.name)
-        debug("BFS: traversal completed")
+                    log().debug('BFS: ignoring  node: %s' % edge.dst_node.name)
+        log().debug("BFS: traversal completed")

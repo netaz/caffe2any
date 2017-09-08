@@ -1,20 +1,8 @@
 #!/usr/bin/python
 
 """
-Start by downloading the Caffe proto file from
-https://github.com/BVLC/caffe/blob/master/src/caffe/proto/caffe.proto
 
-Then use protoc to compile it to caffe_pb2
-protoc caffe.proto
-
-Finally use to parse it
-
-summary
- -l [deconv|conv|]
 """
-
-# See - http://stackoverflow.com/questions/2970858/why-doesnt-print-work-in-a-lambda
-#from __future__ import print_function
 import sys
 import argparse
 from collections import deque, Counter
@@ -26,12 +14,7 @@ from caffe_parser import parse_caffe_net
 from transforms import reduce_transforms
 import topology
 import yaml
-
-DEBUG = False
-
-def debug(str):
-    if DEBUG:
-        print (str)
+import logging
 
 def sum_blob_mem(tplgy, node, blobs, sum):
     if node.type == "Input" or node.role == "Modifier":
@@ -45,6 +28,7 @@ def sum_blob_mem(tplgy, node, blobs, sum):
 
 from transforms.update_blobs_sizes import update_blobs_sizes
 from transforms import fold_transforms
+from transforms import decorator_transforms
 
 def apply_transforms(prefs, tplgy):
     ''' Handle optional transform processing on the topology
@@ -63,8 +47,15 @@ def apply_transforms(prefs, tplgy):
         tplgy.merge_nodes('InnerProduct', 'ReLU')
     if prefs['merge_sum_relu']:
         tplgy.merge_nodes('Eltwise', 'ReLU')
+    #decorator_transforms.horizontal_fusion(tplgy)
+
+import logging.config
+logging.config.fileConfig('logging.conf')
 
 def main():
+    print("caffe2any v0.5")
+    logger = logging.getLogger('topology')
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--printer', help='output printer (csv, console, png)', default='console')
     parser.add_argument('-d', '--display', type=str, help='display inventory,unique,output,bfs,mem')

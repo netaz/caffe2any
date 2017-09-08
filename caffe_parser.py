@@ -1,8 +1,12 @@
 from topology import Topology
-DEBUG = False
-def debug(str):
-    if DEBUG:
-        print (str)
+import logging
+logger = None
+
+def log():
+    global logger
+    if logger == None:
+        logger = logging.getLogger('parsers')
+    return logger
 
 def parse_caffe_net(caffe_net):
     """
@@ -23,7 +27,7 @@ def parse_caffe_net(caffe_net):
         exit("Something went wrong - the parser can't find any layers in the network")
 
     for layer in caffe_net.layer:
-        debug('evaluating layer: ' + layer.name)
+        log().debug('evaluating layer: ' + layer.name)
 
         # filter away layers used only in training phase
         phase = 1  # caffe_pb2.Phase.TEST
