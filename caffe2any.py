@@ -10,7 +10,8 @@ import caffe_pb2 as caffe
 from google.protobuf import text_format
 from printers.png import PngPrinter
 from printers import csv, console
-from caffe_parser import parse_caffe_net
+from parsers.caffe_parser import parse_caffe_net
+from parsers.caffe2_parser import parse_caffe2_net
 from transforms import reduce_transforms
 import topology
 import yaml
