@@ -125,3 +125,19 @@ def __add_macs_annotations(edge, tplgy):
 def add_macs_annotations(tplgy):
     done_blobs = []
     tplgy.traverse(None, lambda edge: __add_macs_annotations(edge, tplgy))
+
+def __filter_edge(edges, edge, blob):
+    if (edge.blob == blob and
+        edge.dst_node is not None and
+        edge.dst_node.type == 'Convolution_ReLU'): edges.append(edge)
+
+def __horizontal_fusion(blob, tplgy):
+    # Find all the edge that have their source in blob
+    edges = []
+    #tplgy.traverse(None, lambda edge: [edge.append(edge) if (edge.blob == blob)])
+    #tplgy.traverse(None, map(lambda edge : edge, filter(lambda edge, blob : edge.blob == blob, )))
+    tplgy.traverse(None, lambda edge: __filter_edge(edges, edge, blob))
+    print(blob.name, len(edges))
+
+def horizontal_fusion(tplgy):
+    tplgy.traverse_blobs(lambda blob: __horizontal_fusion(blob, tplgy))

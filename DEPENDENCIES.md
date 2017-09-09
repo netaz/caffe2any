@@ -3,7 +3,7 @@ I'm using Ubuntu 14.04.1.
 
 1. Install python 3.x<br>
    I'm using  Anaconda.  You can find the official instruction here: https://docs.continuum.io/anaconda/install/linux.html
-1. Create and activate the Anaconda environment<br> 
+1. Create and activate the Anaconda environment<br>
 `conda env create -f environment.yml`<br>
 `source activate caffe2any`
 1. Install graphviz<br>
@@ -27,8 +27,10 @@ However, pydotplus works nicely (https://anaconda.org/conda-forge/pydotplus).
 You can find more information here:  http://www.installion.co.uk/ubuntu/precise/universe/p/python-pydot/install/index.html
 
 `conda install -c anaconda protobuf`<br>
-This is for reading Caffe's protobuf files
+This is for reading protobuf files
 
+`conda install -c conda-forge tqdm`<br>
+This is a text progressbar
 <br>
 Finally, create the YAML file:<br>
 `conda env export > environment.yml`
