@@ -49,6 +49,7 @@ def apply_transforms(prefs, tplgy):
     if prefs['merge_sum_relu']:
         tplgy.merge_nodes('Eltwise', 'ReLU')
     #decorator_transforms.horizontal_fusion(tplgy)
+    fold_transforms.concat_removal(tplgy)
 
 import logging.config
 logging.config.fileConfig('logging.conf')

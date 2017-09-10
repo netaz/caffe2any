@@ -181,14 +181,17 @@ class PngPrinter(object):
             return
 
         if self.__prefs['label_edges'] and edge.blob != None:
-            edge_label = str(edge.blob.shape) #get_edge_label(edge.src_node)
+            edge_label = str(edge.blob.shape)
+            # Add parent BLOB name
+            if edge.blob.parent is not None:
+                edge_label += '\n(' + edge.blob.parent.name + ')'
         else:
             edge_label = '""'
 
         src_name = edge.src_node.name
         self.pydot_edges.append({'src': src_name,
-                                'dst': edge.dst_node.name,
-                                'label': edge_label})
+                                 'dst': edge.dst_node.name,
+                                 'label': edge_label})
 
     def draw_clusters(self, pydot_graph):
         clusters = {}

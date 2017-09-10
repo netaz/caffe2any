@@ -15,7 +15,6 @@ def __is_unique(node, unique_list):
             break
     return unique
 
-
 def __add_unique(node, unique_layers):
     if unique_layers.get(node.type)==None:
         unique_layers[node.type] = []

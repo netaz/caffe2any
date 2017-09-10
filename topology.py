@@ -224,10 +224,6 @@ class ConcatNode(Node):
     def __init__(self, name, type, layer):
         Node.__init__(self, name, type, 'Modifier')
 
-    #def transform_ifm(self, ifm_shape):
-    #    ofm_shape = copy.deepcopy(ifm_shape)
-    #    return ofm_shape
-
 def node_factory(name, type, layer, role):
     if type == "Pooling":
         new_node = PoolingNode(name, type, layer)
@@ -255,6 +251,10 @@ class BLOB:
         self.name = name
         self.shape = shape
         self.producer = producer
+         # A BLOB's parent is the physical BLOB to which this BLOB is mapped.
+         # Another way to look at it: if a BLOB has a parent, it is actually a view
+         # into another BLOB and does not occupy an independent physical space
+        self.parent = None
 
     def __str__(self):
         if self.shape != None:
