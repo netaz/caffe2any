@@ -16,6 +16,27 @@ import topology
 import yaml
 import logging
 
+''' This is a crude dynamic load of printer classes.
+In the future, need to make this nicer.
+This provides the ability to dynamically load printers from other
+code bases.
+'''
+import inspect
+import importlib
+
+def load_printer(printer_type, my_class=None):
+    if my_class == None:
+        module = importlib.import_module('printers')
+        return getattr(module, printer_type)
+
+    mod_name = 'printers.{0}'.format(printer_type)
+    try:
+        module = importlib.import_module(mod_name)
+        return getattr(module, my_class)
+    except ImportError:
+        return None
+
+
 def sum_blob_mem(tplgy, node, blobs, sum):
     if node.type == "Input" or node.role == "Modifier":
         return
@@ -91,8 +112,12 @@ def main():
         elif printer_str == 'csv':
             printer = csv.CsvPrinter(args.infile + '.csv')
         else:
-            print("Printer {} is not supported".format(printer_str))
-            exit()
+            printer_ctor = load_printer(printer_str, 'Printer')
+            if printer_ctor is not None:
+                printer = printer_ctor(args)
+            else:
+                print("Printer {} is not supported".format(printer_str))
+                exit()
 
         if args.display != None:
             for disp_opt in args.display.split(','):
