@@ -83,36 +83,37 @@ def main():
 
     apply_transforms(prefs['transforms'], tplgy)
 
-    if args.printer == 'console':
-        printer = console.ConsolePrinter()
-    elif args.printer == 'png':
-        printer = png.PngPrinter(args, prefs['png'], net)
-    elif args.printer == 'csv':
-        printer = csv.CsvPrinter(args.infile + '.csv')
-    else:
-        print("Printer is not supported")
-        exit()
+    for printer_str in args.printer.split(','):
+        if printer_str == 'console':
+            printer = console.ConsolePrinter()
+        elif printer_str == 'png':
+            printer = png.PngPrinter(args, prefs['png'], net)
+        elif printer_str == 'csv':
+            printer = csv.CsvPrinter(args.infile + '.csv')
+        else:
+            print("Printer {} is not supported".format(printer_str))
+            exit()
 
-    if args.display != None:
-        for disp_opt in args.display.split(','):
-            if disp_opt == 'inventory':
-                printer.print_inventory( reduce_transforms.get_inventory(tplgy) )
-            elif disp_opt == 'unique':
-                printer.print_unique_all( reduce_transforms.get_uniques_inventory(tplgy) )
-            elif disp_opt == 'output':
-                print("outputs:")
-                outputs = tplgy.find_output_blobs()
-                for output in outputs:
-                    print('\t' + output)
-            elif disp_opt == 'bfs':
-                printer.print_bfs(tplgy)
-            elif disp_opt == 'mem':
-                sum = [0]
-                blobs = []
-                tplgy.traverse(lambda node: sum_blob_mem(tplgy, node, blobs, sum))
-                print("Total BLOB memory: " + str(sum[0]))
-            else:
-                exit ("Error: invalid display option")
+        if args.display != None:
+            for disp_opt in args.display.split(','):
+                if disp_opt == 'inventory':
+                    printer.print_inventory( reduce_transforms.get_inventory(tplgy) )
+                elif disp_opt == 'unique':
+                    printer.print_unique_all( reduce_transforms.get_uniques_inventory(tplgy) )
+                elif disp_opt == 'output':
+                    print("outputs:")
+                    outputs = tplgy.find_output_blobs()
+                    for output in outputs:
+                        print('\t' + output)
+                elif disp_opt == 'bfs':
+                    printer.print_bfs(tplgy)
+                elif disp_opt == 'mem':
+                    sum = [0]
+                    blobs = []
+                    tplgy.traverse(lambda node: sum_blob_mem(tplgy, node, blobs, sum))
+                    print("Total BLOB memory: " + str(sum[0]))
+                else:
+                    exit ("Error: invalid display option")
 
 
 if __name__ == '__main__':
