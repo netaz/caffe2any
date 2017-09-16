@@ -177,6 +177,7 @@ class PngPrinter(object):
         self.pydot_nodes[node.name] = pydot.Node(node_label, **layer_style)
 
     def add_pydot_edge(self, edge, tplgy):
+        # print("adding edge:", edge)
         if (edge.src_node is None) or (edge.dst_node is None):
             return
 
@@ -193,35 +194,29 @@ class PngPrinter(object):
                                  'dst': edge.dst_node.name,
                                  'label': edge_label})
 
-    def draw_clusters(self, pydot_graph):
+    def draw_subgraphs(self, tplgy, pydot_graph):
+        nodes = []
+        tplgy.traverse(lambda node: nodes.append(node))
         clusters = {}
-        for node_name, pydot_node in self.pydot_nodes.items():
-            separator = self.__prefs['cluster_name_separator']
-            if node_name.find(separator) > 0:
-                cluster_name = node_name[0:node_name.find(separator)]
-            else:
-                cluster_name = node_name
-            # Dot doesn't handle well clusters with names that contain '-'
-            cluster_name = cluster_name.replace('-', '_')
+        for node in nodes:
+            pydot_node = self.pydot_nodes[node.name]
 
-            is_new_cluster = True
-            for name, cluster in clusters.items():
-                if name == cluster_name:
-                    is_new_cluster = False
-                    cluster.add_node(pydot_node)
-                    break
-            if is_new_cluster:
+            if not hasattr(node, 'subgraph'):
+                pydot_graph.add_node(pydot_node)
+                continue
+
+            cluster_name = str(node.subgraph)
+            if cluster_name in clusters:
+                cluster = clusters[cluster_name]
+            else:
+                # New subgraph
                 cluster = pydot.Cluster(cluster_name, label=cluster_name)
                 clusters[cluster_name] = cluster
-                # print("creating cluster: ", cluster_name)
-                cluster.add_node(pydot_node)
+            cluster.add_node(pydot_node)
 
-        for cluster in clusters.values():
-            # for clusters of size 1, we don't want to draw a cluster box
-            if len(cluster.get_nodes()) == 1:
-                pydot_graph.add_node(cluster.get_nodes()[0])
-            else:
-                pydot_graph.add_subgraph(cluster)
+        for _,cluster in clusters.items():
+            pydot_graph.add_subgraph(cluster)
+        pydot_graph.write_raw('debug.dot')
 
     def draw_net(self, caffe_net, rankdir, tplgy):
         pydot_graph = pydot.Dot(self.caffe_net.name if self.caffe_net.name else 'Net',
@@ -229,17 +224,9 @@ class PngPrinter(object):
                                 compound='true',
                                 rankdir=rankdir)
 
-        # tplgy.dump_edges()
         tplgy.traverse(lambda node: self.add_pydot_node(node, tplgy, rankdir),
                        lambda edge: self.add_pydot_edge(edge, tplgy))
-
-        # Cluster nodes by name prefix
-        # add the nodes and edges to the graph.
-        if self.__prefs['draw_clusters']:
-            self.draw_clusters(pydot_graph)
-        else:   # not clustering
-            for pydot_node in iter(self.pydot_nodes.values()):
-                pydot_graph.add_node(pydot_node)
+        self.draw_subgraphs(tplgy, pydot_graph)
 
         for edge in self.pydot_edges:
             if edge['dst'] not in self.pydot_nodes:

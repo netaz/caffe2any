@@ -289,6 +289,16 @@ class Edge:
             desc += " IS DELETED!!"
         return desc
 
+class SubGraph:
+    ''' A sub-graph is a specific view of the graph.
+    (loosely following: https://www.tensorflow.org/versions/r0.12/api_docs/python/contrib.graph_editor/module_subgraph)
+    It has incoming edges, outgoing edges, and a set of nodes.
+    '''
+    def __init__(self, nodes=None, in_edges=None, out_edges=None):
+        self.nodes = nodes
+        self.in_edges = in_edges
+        self.out_edges = out_edges
+
 class Topology:
     def __init__(self):
         """
@@ -306,13 +316,16 @@ class Topology:
         for edge in self.__edges:
             print(str(edge))
 
-    def add_node(self, name, type, layer, role):
-        new_node = node_factory(name, type, layer, role)
-        self.__nodes[name] = new_node
+    def add_node2(self, new_node):
+        self.__nodes[new_node.name] = new_node
         if self.__first_node is None:
             self.__first_node = new_node
-        log().debug('created Node:' + name)
+        log().debug('created Node:' + new_node.name)
         return new_node
+
+    def add_node(self, name, type, layer, role):
+        new_node = node_factory(name, type, layer, role)
+        return self.add_node2(new_node)
 
     def add_nodes(self, nodes_to_add):
         for node in nodes_to_add:
@@ -393,6 +406,9 @@ class Topology:
         if name not in self.__blobs:
             return None
         return self.__blobs[name]
+
+    def find_node_by_name(self, name):
+        return self.__nodes[name]
 
     def find_outgoing_edges(self, node):
         edges = []

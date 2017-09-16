@@ -32,8 +32,6 @@ png:
         'label_edges': True
         # Graph drawing direction: left-right, top-bottom, bottom-top
         'rankdir': 'TB'  # {'LR', 'TB', 'BT'}
-        # Draw cluster bounding boxes
-        'draw_clusters': True
         # The separator character for parsing a node name to cluster_name-separator-node
         # (only relevant if draw_clusters is True)
         'cluster_name_separator': '/'
