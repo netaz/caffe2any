@@ -8,8 +8,7 @@ import argparse
 from collections import deque, Counter
 import caffe_pb2 as caffe
 from google.protobuf import text_format
-from printers.png import PngPrinter
-from printers import csv, console
+from printers import csv, console, png
 from parsers.caffe_parser import parse_caffe_net
 from parsers.caffe2_parser import parse_caffe2_net
 from transforms import reduce_transforms
@@ -84,13 +83,15 @@ def main():
 
     apply_transforms(prefs['transforms'], tplgy)
 
-    # tplgy.dump_edges()
     if args.printer == 'console':
         printer = console.ConsolePrinter()
     elif args.printer == 'png':
-        printer = PngPrinter(args, prefs['png'], net)
-    else:
+        printer = png.PngPrinter(args, prefs['png'], net)
+    elif args.printer == 'csv':
         printer = csv.CsvPrinter(args.infile + '.csv')
+    else:
+        print("Printer is not supported")
+        exit()
 
     if args.display != None:
         for disp_opt in args.display.split(','):
