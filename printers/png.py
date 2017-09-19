@@ -190,9 +190,12 @@ class PngPrinter(object):
             edge_label = '""'
 
         src_name = edge.src_node.name
+        memory = edge.blob.memory if hasattr(edge.blob, 'memory') else ''
+
         self.pydot_edges.append({'src': src_name,
                                  'dst': edge.dst_node.name,
-                                 'label': edge_label})
+                                 'label': edge_label,
+                                 'memory': memory})
 
     def draw_subgraphs(self, tplgy, pydot_graph):
         nodes = []
@@ -210,7 +213,7 @@ class PngPrinter(object):
                 cluster = clusters[cluster_name]
             else:
                 # New subgraph
-                cluster = pydot.Cluster(cluster_name, label=cluster_name)
+                cluster = pydot.Cluster(cluster_name, label=cluster_name, style="filled")
                 clusters[cluster_name] = cluster
             cluster.add_node(pydot_node)
 
@@ -233,10 +236,14 @@ class PngPrinter(object):
                 print('Fatal error: node \'%s\' of edge %s is not in the pydot_node list!' % (edge['dst'], edge))
                 #exit()
                 break
+
+            style = 'dashed' if edge['memory']=='scratchpad' else ''
+
             pydot_graph.add_edge(
                 pydot.Edge(self.pydot_nodes[edge['src']],
                            self.pydot_nodes[edge['dst']],
-                           label=edge['label']))
+                           label=edge['label'],
+                           style = style))
 
         print("Number of nodes:", len(self.pydot_nodes))
         if self.__prefs['gen_dot_file']:
