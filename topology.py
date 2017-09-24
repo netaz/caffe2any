@@ -331,8 +331,8 @@ class Topology:
     def dump_blobs(self):
         print('Dumping blobs')
         print('-----------------------------------------')
-        for blob in self.__blobs:
-            print(self.__blobs[blob])
+        for name, blob in self.__blobs.items():
+            print(name + ': ' + str(blob))
 
     def add_node2(self, new_node):
         self.__nodes[new_node.name] = new_node
@@ -404,7 +404,7 @@ class Topology:
                 done = False
 
     def add_blob(self, name, shape, producer):
-        #new_blob = BLOB("b_"+name, shape, producer)
+        #new_blob = BLOB(name, shape, producer)
         new_blob = BLOB("b_"+name, shape, producer)
         #assert name not in self.__blobs, 'BLOB ' + name + ' already exists'
         #self.__blobs[new_blob.name] = new_blob
@@ -536,7 +536,10 @@ class Topology:
                 self.add_edge(node1_incoming_edge.src, new_node)
             for node3_out_edge in node3_outgoing_edges:
                 self.add_edge(new_node, node3_out_edge.dst)
-            assert self.__blobs[node2.name]
+
+            #self.dump_blobs(), print(node1.name, node2.name)
+            assert node2.name in self.__blobs,  node2.name + ' not found'
+
             log().debug('[merge_nodes] deleting nodes: {}, {}, {}'.format(node1, node2, node3))
             #self.dump_blobs()
             self.del_nodes([node1, node2, node3])

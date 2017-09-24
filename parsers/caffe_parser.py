@@ -58,7 +58,11 @@ def parse_caffe_net(caffe_net):
             # We have an in-place neuron layer.
             node_role = 'Modifier'
 
-        new_node = graph.add_node(layer.name, layer.type, layer, node_role)
+        if layer.type == "Input":
+            graph.add_blob(layer.name, layer.input_param.shape[0].dim, producer=None)
+            continue
+        else:
+            new_node = graph.add_node(layer.name, layer.type, layer, node_role)
 
         if node_role == 'Modifier':
             modifiers.append({ 'blob': layer.bottom[0],
@@ -83,13 +87,12 @@ def parse_caffe_net(caffe_net):
             blob = graph.find_blob_by_name(caffe_bottom_blob)
             if blob == None:
                 raise ValueError(layer.name + ' - could not find BLOB:' + caffe_bottom_blob)
-
             edge = graph.add_edge(src=blob, dst=new_node)
 
         # Add the BLOBs produced by this layer to the topology
         for caffe_top_blob in layer.top:
-            if new_node.type == "Input":
-                new_blob = graph.add_blob(caffe_top_blob, layer.input_param.shape[0].dim, producer=new_node)
+            if new_node==None: #.type == "Input":
+                new_blob = graph.add_blob(caffe_top_blob, layer.input_param.shape[0].dim, producer=None)#producer=new_node)
             else:
                 new_blob = graph.add_blob(caffe_top_blob, None, producer=new_node)
 

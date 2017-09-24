@@ -17,12 +17,17 @@ def concat_removal(tplgy):
     Incoming edges to the Concat layer all produce into a
     single tensor.
     """
-    nodes = []
-    tplgy.traverse(lambda node: __concat_removal(node, nodes))
-    for node in nodes:
+    concat_nodes = []
+    tplgy.traverse(lambda node: __concat_removal(node, concat_nodes))
+    for node in concat_nodes:
         incoming_edges = tplgy.find_incoming_edges(node)
         outgoing_edges = tplgy.find_outgoing_edges(node)
-        assert len(incoming_edges)>1 and len(outgoing_edges)>0
-        parent_blob = outgoing_edges[0].blob
+        assert len(incoming_edges)>1 and len(outgoing_edges)==1
         for edge in incoming_edges:
-            edge.blob.parent = parent_blob
+            tplgy.add_edge(edge.src, outgoing_edges[0].dst)
+            tplgy.del_edge(edge)
+        tplgy.del_node(node)
+        tplgy.del_edge(outgoing_edges[0])
+        #parent_blob = outgoing_edges[0].blob
+        #for edge in incoming_edges:
+        #    edge.blob.parent = parent_blob

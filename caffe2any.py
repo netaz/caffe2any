@@ -67,11 +67,17 @@ def apply_transforms(prefs, tplgy):
         __prune_edges(tplgy)
     if prefs['merge_conv_relu']:
         tplgy.merge_nodes('Convolution', 'ReLU')
+
     if prefs['merge_ip_relu']:
         tplgy.merge_nodes('InnerProduct', 'ReLU')
     if prefs['merge_conv_relu_pooling']:
         tplgy.merge_nodes('Convolution_ReLU', 'Pooling')
-    tplgy.dump_blobs()
+
+    '''
+    tplgy.dump_edges()
+    '''
+    fold_transforms.concat_removal(tplgy)
+    #__prune_edges(tplgy)
     return
 
     if prefs['fold_batchnorm']:
@@ -82,7 +88,7 @@ def apply_transforms(prefs, tplgy):
     if prefs['merge_sum_relu']:
         tplgy.merge_nodes('Eltwise', 'ReLU')
     #decorator_transforms.horizontal_fusion(tplgy)
-    fold_transforms.concat_removal(tplgy)
+
 
 import logging.config
 logging.config.fileConfig('logging.conf')
