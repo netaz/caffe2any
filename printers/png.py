@@ -117,8 +117,8 @@ class PngPrinter(object):
         elif format == 'custom':
             node_label = node.name + separator + pooling_type[node.pool_type] + ', k=' + str(node.kernel_size) + 'x' + str(
                          node.kernel_size) + '/s=' + str(node.stride) + ' pad=' + str(node.pad)
-            if node.ceiling:
-                node_label += ' ceiling'
+            #if node.ceiling:
+            #    node_label += ' ceiling'
             node_label = '%s%s(%s)' % (node_label, separator, node.type)
         else:
             node_label = None
@@ -178,10 +178,10 @@ class PngPrinter(object):
 
     def add_pydot_edge(self, edge, tplgy):
         # print("adding edge:", edge)
-        if (edge.src_node is None) or (edge.dst_node is None):
+        if (edge.src is None) or (edge.dst is None):
             return
 
-        if self.__prefs['label_edges'] and edge.blob != None:
+        if False: # self.__prefs['label_edges'] and edge.blob != None:
             edge_label = str(edge.blob.shape)
             # Add parent BLOB name
             if edge.blob.parent is not None:
@@ -189,11 +189,11 @@ class PngPrinter(object):
         else:
             edge_label = '""'
 
-        src_name = edge.src_node.name
-        memory = edge.blob.memory if hasattr(edge.blob, 'memory') else ''
+        src_name = edge.src.name
+        memory = '' #edge.blob.memory if hasattr(edge.blob, 'memory') else ''
 
         self.pydot_edges.append({'src': src_name,
-                                 'dst': edge.dst_node.name,
+                                 'dst': edge.dst.name,
                                  'label': edge_label,
                                  'memory': memory})
 

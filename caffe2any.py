@@ -51,21 +51,34 @@ from transforms.update_blobs_sizes import update_blobs_sizes
 from transforms import fold_transforms
 from transforms import decorator_transforms
 
+def __prune_edges(tplgy):
+    ''' Remove unnecessary edges '''
+    pruned_edges = []
+    tplgy.traverse(None, lambda edge: pruned_edges.append(edge if type(edge.src)==type(edge.dst) else None))
+    for edge in pruned_edges:
+        if edge is not None:
+            tplgy.del_edge(edge)
+
 def apply_transforms(prefs, tplgy):
     ''' Handle optional transform processing on the topology
     '''
     if prefs['remove_dropout']:
         tplgy.remove_node_by_type('Dropout')
+        __prune_edges(tplgy)
+    if prefs['merge_conv_relu']:
+        tplgy.merge_nodes('Convolution', 'ReLU')
+    if prefs['merge_ip_relu']:
+        tplgy.merge_nodes('InnerProduct', 'ReLU')
+    if prefs['merge_conv_relu_pooling']:
+        tplgy.merge_nodes('Convolution_ReLU', 'Pooling')
+    tplgy.dump_blobs()
+    return
+
     if prefs['fold_batchnorm']:
         fold_transforms.fold_pair(tplgy, 'Convolution', 'BatchNorm')
     if prefs['fold_scale']:
         fold_transforms.fold_pair(tplgy, 'Convolution', 'Scale')
-    if prefs['merge_conv_relu']:
-        tplgy.merge_nodes('Convolution', 'ReLU')
-    if prefs['merge_conv_relu_pooling']:
-        tplgy.merge_nodes('Convolution_ReLU', 'Pooling')
-    if prefs['merge_ip_relu']:
-        tplgy.merge_nodes('InnerProduct', 'ReLU')
+
     if prefs['merge_sum_relu']:
         tplgy.merge_nodes('Eltwise', 'ReLU')
     #decorator_transforms.horizontal_fusion(tplgy)
@@ -95,8 +108,12 @@ def main():
         exit("Could not open file " + sys.argv[1])
 
     tplgy = parse_caffe_net(net)
+    #.dump_blobs()
+    #exit()
     # calculate BLOBs sizes
-    tplgy.traverse(lambda node: update_blobs_sizes(tplgy, node))
+    #tplgy.traverse(lambda node: update_blobs_sizes(tplgy, node))
+    #tplgy.dump_edges()
+    #exit()
 
     # read preferences
     with open("caffe2any_cfg.yml", 'r') as cfg_file:

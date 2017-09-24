@@ -255,6 +255,7 @@ class BLOB:
          # Another way to look at it: if a BLOB has a parent, it is actually a view
          # into another BLOB and does not occupy an independent physical space
         self.parent = None
+        self.type = 'Tensor'
 
     def __str__(self):
         if self.shape != None:
@@ -275,16 +276,27 @@ class BLOB:
 
 
 class Edge:
-    def __init__(self, src_node, dst_node, blob):
+    '''    def __init__(self, src_node, dst_node, blob):
         self.src_node = src_node
         self.dst_node = dst_node
         self.blob = blob
         self.is_deleted = False
+    '''
+    def __init__(self, src, dst):
+        self.src = src
+        self.dst = dst
+        self.is_deleted = False
+
+    @staticmethod
+    def __print_vertex(vertex):
+        if vertex is None:
+            return 'None'
+        if type(vertex) == BLOB:
+            return '[' + vertex.name + ']'
+        return vertex.name
 
     def __str__(self):
-        desc = ((self.src_node.name if self.src_node else 'None') + ' ==> ' +
-                str(self.blob) + ' ==> ' +
-                (self.dst_node.name if self.dst_node else 'None'))
+        desc = self.__print_vertex(self.src) + ' ==> ' + self.__print_vertex(self.dst)
         if self.is_deleted:
             desc += " IS DELETED!!"
         return desc
@@ -316,6 +328,12 @@ class Topology:
         for edge in self.__edges:
             print(str(edge))
 
+    def dump_blobs(self):
+        print('Dumping blobs')
+        print('-----------------------------------------')
+        for blob in self.__blobs:
+            print(self.__blobs[blob])
+
     def add_node2(self, new_node):
         self.__nodes[new_node.name] = new_node
         if self.__first_node is None:
@@ -336,7 +354,11 @@ class Topology:
 
     def del_nodes(self, nodes_to_del):
         for node in nodes_to_del:
-            self.del_node(node)
+            if type(node) == BLOB:
+                #self.del_blob(node)
+                del self.__blobs[node.name]
+            else:
+                self.del_node(node)
 
     def del_node(self, node):
         # remove all edges which enter/exit this node
@@ -363,9 +385,11 @@ class Topology:
         incoming_edges = self.find_incoming_edges(node)
         outgoing_edges = self.find_outgoing_edges(node)
         for incoming_edge in incoming_edges:
-            src = incoming_edge.src_node
+            src = incoming_edge.src
             for outgoing_edge in outgoing_edges:
-                self.add_edge(src, outgoing_edge.dst_node, incoming_edge.blob)
+                #self.add_edge(src, outgoing_edge.dst, incoming_edge.blob)
+                # NETA _ HANDLE THIS
+                self.add_edge(src, outgoing_edge.dst)
         self.del_node(node)
 
     def remove_node_by_type(self, type_to_remove):
@@ -380,13 +404,30 @@ class Topology:
                 done = False
 
     def add_blob(self, name, shape, producer):
-        new_blob = BLOB(name, shape, producer)
+        #new_blob = BLOB("b_"+name, shape, producer)
+        new_blob = BLOB("b_"+name, shape, producer)
+        #assert name not in self.__blobs, 'BLOB ' + name + ' already exists'
+        #self.__blobs[new_blob.name] = new_blob
         self.__blobs[name] = new_blob
         log().debug('created:' + str(new_blob))
         return new_blob
 
+    def add_blob2(self, new_blob):
+        assert type(new_blob)==BLOB
+        assert new_blob.name not in self.__blobs, "{} already a BLOB".format(new_blob.name)
+        self.__blobs[new_blob.name] = new_blob
+        log().debug('created:' + str(new_blob))
+        return new_blob
+
+    '''
     def add_edge(self, src, dst, blob):
         new_edge = Edge(src, dst, blob)
+        self.__edges.append(new_edge)
+        log().debug('created edge:' + str(new_edge))
+        return new_edge
+    '''
+    def add_edge(self, src, dst):
+        new_edge = Edge(src, dst)
         self.__edges.append(new_edge)
         log().debug('created edge:' + str(new_edge))
         return new_edge
@@ -400,6 +441,7 @@ class Topology:
 
     def get_start_node(self):
         #return self.__nodes.values()[0]
+        log().debug("Start node: " + str(self.__first_node))
         return self.__first_node
 
     def find_blob_by_name(self, name):
@@ -410,17 +452,26 @@ class Topology:
     def find_node_by_name(self, name):
         return self.__nodes[name]
 
+    def find_edge(self, src, dst):
+        for edge in self.__edges:
+            if edge.src==src and edge.dst==dst:
+                return edge
+        return None
+
     def find_outgoing_edges(self, node):
         edges = []
         for edge in self.__edges:
-            if (edge.is_deleted is False) and (edge.src_node != None) and (edge.src_node.name == node.name):
+            if (edge.is_deleted is False) and (edge.src != None) and (edge.src.name == node.name):
                 edges.append(edge)
         return edges
 
     def find_incoming_edges(self, node):
         edges = []
         for edge in self.__edges:
-            if (edge.is_deleted is False) and (edge.dst_node != None) and (edge.dst_node.name == node.name):
+            if ((edge.is_deleted is False) and
+                (edge.dst != None) and
+                (edge.dst.name == node.name) and
+                type(edge.dst) == type(node)):
                 edges.append(edge)
         return edges
 
@@ -438,7 +489,7 @@ class Topology:
             if blob_has_consumer is False:
                 blobs.append(blob)
         return blobs
-
+    '''
     def find_subgraph_pair(self, node1_type, node2_type):
         pairs = []
         for node_name in self.__nodes:
@@ -447,33 +498,51 @@ class Topology:
             if node1.type != node1_type:
                 continue
             outgoing_edges = self.find_outgoing_edges(node1)
-            assert len(outgoing_edges) == 1
+            #assert len(outgoing_edges) == 1
             out_edge = outgoing_edges[0]
-            if out_edge.dst_node is None or out_edge.dst_node.type != node2_type:
+            if out_edge.dst is None: ## or out_edge.dst.type != node2_type:
                 continue
 
             # Found a match
-            node2 = out_edge.dst_node
+            node2 = out_edge.dst
             pairs.append([node1, node2])
         return pairs
+    '''
+    def find_type_pattern(self, node1_type, node2_type, node3_type):
+        ''' This is a very specific pattern matcher which looks for nodes
+        having the pattern [type1] ==> [type2] ==> [type3]
+        '''
+        #list(self.__nodes.keys())
+        found = []
+        nodes1 = [node for node in list(self.__nodes.values()) if node.type == node1_type]
+        for node1 in nodes1:
+            nodes2 = [edge.dst for edge in self.find_outgoing_edges(node1) if edge.dst.type == node2_type]
+            for node2 in nodes2:
+                nodes3 = [edge.dst for edge in self.find_outgoing_edges(node2) if edge.dst.type == node3_type]
+                for node3 in nodes3:
+                    #print(node1, node2, node3)
+                    found.append((node1, node2, node3))
+        return found
 
     def merge_nodes(self, node1_type, node2_type):
         ''' Merge two nodes together
         '''
-        pairs = self.find_subgraph_pair(node1_type, node2_type)
-        for (node1, node2) in pairs:
-            new_node = PairNode(copy.deepcopy(node1), copy.deepcopy(node2))
-            node2_outgoing_edges = self.find_outgoing_edges(node2)
-            for node2_out_edge in node2_outgoing_edges:
-                self.add_edge(new_node, node2_out_edge.dst_node, copy.deepcopy(node2_out_edge.blob))
-
+        found = self.find_type_pattern(node1_type, 'Tensor', node2_type)
+        for (node1, node2, node3) in found:
+            new_node = PairNode(copy.deepcopy(node1), copy.deepcopy(node3))
+            node3_outgoing_edges = self.find_outgoing_edges(node3)
             node1_incoming_edges = self.find_incoming_edges(node1)
             for node1_incoming_edge in node1_incoming_edges:
-                self.add_edge(node1_incoming_edge.src_node, new_node, copy.deepcopy(node1_incoming_edge.blob))
-            log().debug("[merge_nodes] deleting nodes %s, %s" % (node1.name,node2.name))
-            self.del_nodes([node1, node2])
+                self.add_edge(node1_incoming_edge.src, new_node)
+            for node3_out_edge in node3_outgoing_edges:
+                self.add_edge(new_node, node3_out_edge.dst)
+            assert self.__blobs[node2.name]
+            log().debug('[merge_nodes] deleting nodes: {}, {}, {}'.format(node1, node2, node3))
+            #self.dump_blobs()
+            self.del_nodes([node1, node2, node3])
             self.add_nodes([new_node])
-        return
+        if len(found)==0:
+            log().debug('[merge_nodes] didn`t find candidates for types {}, {}'.format(node1_type, node2_type))
 
     def traverse_blobs(self, blob_cb):
         done = []
@@ -494,13 +563,14 @@ class Topology:
 
             # This is a modification of BFS: we mandate that all incoming edges
             # have been processed before processing the node to ensure processing order satisfies data dependency
-            log().debug('BFS: processing node: %s' %node.name)
             incoming_edges = self.find_incoming_edges(node)
+            log().debug('BFS: processing node: {} ({})'.format(node.name, len(incoming_edges)))
             all_in_edges_were_processed = True
             for edge in incoming_edges:
-                if edge.src_node and edge.src_node not in done:
+                #print(edge, edge.src)
+                if edge.src and (edge.src not in done) and (type(edge.src) != BLOB):
                     all_in_edges_were_processed = False
-                    log().debug("BFS: %s is waiting for %s" % (node.name, edge.src_node.name))
+                    log().debug("BFS: %s is waiting for %s" % (node.name, edge.src.name))
             if all_in_edges_were_processed is False:
                 continue
 
@@ -528,9 +598,9 @@ class Topology:
             # outgoing_edges = self.find_outgoing_edges(node)
             outgoing_edges = self.find_outgoing_edges(node)
             for edge in outgoing_edges:
-                if (edge.dst_node is not None) and (edge.dst_node not in done) and edge.dst_node not in pending:
-                    pending.append(edge.dst_node)
-                    log().debug('BFS: adding node: %s' % edge.dst_node.name)
-                elif edge.dst_node is not None:
-                    log().debug('BFS: ignoring  node: %s' % edge.dst_node.name)
+                if (edge.dst is not None) and (edge.dst not in done) and edge.dst not in pending:
+                    pending.append(edge.dst)
+                    log().debug('BFS: adding node: %s' % edge.dst.name)
+                elif edge.dst is not None:
+                    log().debug('BFS: ignoring  node: %s' % edge.dst.name)
         log().debug("BFS: traversal completed")

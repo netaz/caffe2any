@@ -53,6 +53,10 @@ png:
             'shape': 'record'
             'fillcolor': '#6495ED'
             'style': 'filled'
+        'Tensor':
+            'shape': 'point'
+            'fillcolor': '#FF5050'
+            'style': 'filled'
         'Convolution':
             'shape': 'record'
             'fillcolor': '#FF5050'
@@ -71,6 +75,10 @@ png:
             'shape': 'record'
             'fillcolor': '#6495ED'
             'style': 'rounded, filled'
+        'Tensor':
+            'shape': 'point'
+            'fillcolor': '#FF5050'
+            'style': 'filled'
         'Convolution':
             'shape': 'record'
             'fillcolor': '#FF5050'
@@ -108,6 +116,10 @@ png:
         'layer_default':
             'shape': 'record'
             'fillcolor': '#3cba54'
+            'style': 'filled'
+        'Tensor':
+            'shape': 'point'
+            'fillcolor': '#FF5050'
             'style': 'filled'
         'Convolution':
             'shape': 'record'
