@@ -62,7 +62,7 @@ def parse_caffe_net(caffe_net):
             graph.add_blob(layer.name, layer.input_param.shape[0].dim, producer=None)
             continue
         else:
-            new_node = graph.add_node(layer.name, layer.type, layer, node_role)
+            new_node = graph.add_op(layer.name, layer.type, layer, node_role)
 
         if node_role == 'Modifier':
             modifiers.append({ 'blob': layer.bottom[0],
@@ -101,7 +101,7 @@ def parse_caffe_net(caffe_net):
 
     for mod in modifiers:
         blob = graph.find_blob_by_name(mod['blob'])
-        src = graph.find_node_by_name(mod['src'])
+        src = graph.find_op_by_name(mod['src'])
 
         replicated_blob = graph.find_blob_by_name(blob.name + '_replica')
         if replicated_blob is None:

@@ -63,15 +63,15 @@ def apply_transforms(prefs, tplgy):
     ''' Handle optional transform processing on the topology
     '''
     if prefs['remove_dropout']:
-        tplgy.remove_node_by_type('Dropout')
+        tplgy.remove_op_by_type('Dropout')
         __prune_edges(tplgy)
     if prefs['merge_conv_relu']:
-        tplgy.merge_nodes('Convolution', 'ReLU')
+        tplgy.merge_ops('Convolution', 'ReLU')
 
     if prefs['merge_ip_relu']:
-        tplgy.merge_nodes('InnerProduct', 'ReLU')
+        tplgy.merge_ops('InnerProduct', 'ReLU')
     if prefs['merge_conv_relu_pooling']:
-        tplgy.merge_nodes('Convolution_ReLU', 'Pooling')
+        tplgy.merge_ops('Convolution_ReLU', 'Pooling')
 
     '''
     tplgy.dump_edges()

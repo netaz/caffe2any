@@ -26,7 +26,7 @@ def concat_removal(tplgy):
         for edge in incoming_edges:
             tplgy.add_edge(edge.src, outgoing_edges[0].dst)
             tplgy.del_edge(edge)
-        tplgy.del_node(node)
+        tplgy.del_op(node)
         tplgy.del_edge(outgoing_edges[0])
         #parent_blob = outgoing_edges[0].blob
         #for edge in incoming_edges:
