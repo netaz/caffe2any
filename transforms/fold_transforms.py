@@ -1,10 +1,11 @@
-def fold_pair(tplgy, node1_type, node2_type):
-    """ This transform looks for the pattern [node1_type]==>[node2_type]
-    and for all matched subgraphs, it removes node2.
+def fold_pair(tplgy, op1_type, op2_type):
+    """ This transform looks for the pattern [op1_type] ==> [tensor] ==> [op2_type]
+    and for all matched subgraphs, it removes op2.
     We call this "folding".
     """
-    pairs = tplgy.find_subgraph_pair(node1_type, node2_type)
-    if len(pairs) > 0:
+    subgraph = tplgy.find_type_pattern(op1_type, 'Tensor', op2_type)
+    if len(subgraph) > 0:
+        assert False, 'this is broken'
         bn_nodes = [pair[1] for pair in pairs]
         tplgy.remove_nodes(bn_nodes)
 

@@ -9,6 +9,7 @@ from collections import OrderedDict, deque
 import math
 import copy
 import logging
+import sys, traceback
 logger = None
 
 def log():
@@ -115,6 +116,7 @@ class ConvolutionNode(Op):
 
 
 class PairNode(Op):
+    ''' Container of two Operations '''
     def __init__(self, node1, node2):
         self.node1 = node1
         self.node2 = node2
@@ -122,6 +124,9 @@ class PairNode(Op):
         type = node1.type + '_' + node2.type
         #type = new_type if new_type is not None else node1.type + '_' + node2.type
         Op.__init__(self, name, type, node1.role)
+
+    def transform_ifm(self, ifm_shape):
+        return self.node1.transform_ifm(ifm_shape)
 
     def is_same(self, other):
         return self.node1.is_same(other.node1) and self.node2.is_same(other.node2)
@@ -359,9 +364,9 @@ class Topology:
             if type(node) == BLOB:
                 del self.__blobs[node.name]
             else:
-                self.del_op(node)
+                self.__del_op(node)
 
-    def del_op(self, op):
+    def __del_op(self, op):
         assert issubclass(type(op), Op)
         # remove all edges which enter/exit this node
         incoming_edges = self.find_incoming_edges(op)
@@ -385,16 +390,32 @@ class Topology:
     # remove_node will del_node and also reconnect the edge around
     # the node that was removed
     def remove_op(self, op):
+        '''
+        +--------+     +++++++++++     +----+     +++++++++++     +-------+
+        | pre_op |---->| pre_data|---->| op |---->|post_data|---->|post_op|
+        +--------+     +++++++++++     +----+     +++++++++++     +-------+
+
+        +--------+     +++++++++++                                +-------+
+        | pre_op |---->| pre_data|------------------------------->|post_op|
+        +--------+     +++++++++++                                +-------+
+        '''
         assert issubclass(type(op), Op)
         incoming_edges = self.find_incoming_edges(op)
         outgoing_edges = self.find_outgoing_edges(op)
         for incoming_edge in incoming_edges:
-            src = incoming_edge.src
+            pre_data = incoming_edge.src
             for outgoing_edge in outgoing_edges:
-                #self.add_edge(src, outgoing_edge.dst, incoming_edge.blob)
-                # NETA _ HANDLE THIS
-                self.add_edge(src, outgoing_edge.dst)
-        self.del_op(op)
+                post_data_2_post_op_edges = self.find_outgoing_edges(outgoing_edge.dst)
+                for post_data_2_post_op_edge in post_data_2_post_op_edges:
+                    new_edge = self.add_edge(pre_data, post_data_2_post_op_edge.dst)
+                    #print("adding edge", new_edge)
+                    self.del_edge(post_data_2_post_op_edge)
+
+                # Delete post_data
+                #self.del_nodes([outgoing_edge.dst])
+                # Delete edge
+                self.del_edge(outgoing_edge)
+        self.__del_op(op)
 
     def remove_op_by_type(self, type_to_remove):
         done = False
@@ -414,6 +435,8 @@ class Topology:
         #self.__blobs[new_blob.name] = new_blob
         self.__blobs[name] = new_blob
         log().debug('created:' + str(new_blob))
+        if self.__first_node is None:
+            self.__first_node = new_blob
         return new_blob
 
     def add_blob2(self, new_blob):
@@ -421,6 +444,8 @@ class Topology:
         assert new_blob.name not in self.__blobs, "{} already a BLOB".format(new_blob.name)
         self.__blobs[new_blob.name] = new_blob
         log().debug('created:' + str(new_blob))
+        if self.__first_node is None:
+            self.__first_node = new_blob
         return new_blob
 
     '''
@@ -545,23 +570,26 @@ class Topology:
             assert node2.name in self.__blobs,  node2.name + ' not found'
 
             log().debug('[merge_nodes] deleting nodes: {}, {}, {}'.format(node1, node2, node3))
-            #self.dump_blobs()
             self.del_nodes([node1, node2, node3])
             self.add_ops([new_node])
         if len(found)==0:
             log().debug('[merge_ops] didn`t find candidates for types {}, {}'.format(op1_type, op2_type))
 
+    '''
     def traverse_blobs(self, blob_cb):
         done = []
         for blob in self.__blobs:
             if blob in done:
                 continue
             blob_cb(self.__blobs[blob])
+    '''
 
     def traverse(self, node_cb, edge_cb=None):
-        """
-        BFS (with modifications) traversal of the topology graph
-        """
+        ''' BFS (with modifications) traversal of the topology graph.
+        Essentially this is a topological sort with callbacks.
+        For each node (Operation or BLOB) the node_cb is invoked, if it is not None.
+        For each Edge, the edge_cb is invoked, if it is not None.
+        '''
         pending = deque([self.get_start_node()])    # The list of nodes waiting to be processed
         done = []                                   # The list of nodes we've already processed
         log().debug('BFS: Starting traversal with node %s' % self.get_start_node())
@@ -574,8 +602,7 @@ class Topology:
             log().debug('BFS: processing node: {} ({})'.format(node.name, len(incoming_edges)))
             all_in_edges_were_processed = True
             for edge in incoming_edges:
-                #print(edge, edge.src)
-                if edge.src and (edge.src not in done) and (type(edge.src) != BLOB):
+                if edge.src and (edge.src not in done): #and (type(edge.src) != BLOB):
                     all_in_edges_were_processed = False
                     log().debug("BFS: %s is waiting for %s" % (node.name, edge.src.name))
             if all_in_edges_were_processed is False:
@@ -583,7 +610,7 @@ class Topology:
 
             done.append(node)
             log().debug("BFS: done with %s" % node.name)
-            if node_cb is not None:
+            if node_cb is not None:# and type(node) != BLOB:
                 # TODO: this can probably be removed after adding the data-dependency constraint
                 # Node callback can indicate failure, in which case we try again later
                 cb_handled = node_cb(node)
@@ -611,3 +638,5 @@ class Topology:
                 elif edge.dst is not None:
                     log().debug('BFS: ignoring  node: %s' % edge.dst.name)
         log().debug("BFS: traversal completed")
+        #for line in traceback.format_stack():
+        #    print(line.strip())

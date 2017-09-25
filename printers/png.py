@@ -55,6 +55,7 @@ class PngPrinter(object):
             'Concat': PngPrinter.print_concat,
             'Convolution_ReLU': PngPrinter.print_mergednode,
             'Convolution_ReLU_Pooling': PngPrinter.print_mergednode,
+            'Tensor': PngPrinter.print_tensor,
         }
 
         printer = layers.get(node.type, PngPrinter.print_default)
@@ -64,6 +65,12 @@ class PngPrinter(object):
     @staticmethod
     def print_default(node, separator, format):
         node_label = '%s%s(%s)' % (node.name, separator, node.type)
+        return node_label
+
+    @staticmethod
+    def print_tensor(node, separator, format):
+        node_label = '%s%s(%s)' % (node.name, separator, node.type)
+        node_label += '\n' + str(node.shape) if node.shape is not None else 'None'
         return node_label
 
     @staticmethod

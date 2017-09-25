@@ -1,5 +1,5 @@
 # TODO: Remove node_role
-from topology import Topology
+from topology import Topology, BLOB
 import copy
 import logging
 logger = None
@@ -17,7 +17,7 @@ def parse_caffe_net(caffe_net):
     """
     graph = Topology()
 
-    modifiers = []
+    modifiers = {}
 
     # Input BLOBs
     for i in range(len(caffe_net.input)):
@@ -65,9 +65,14 @@ def parse_caffe_net(caffe_net):
             new_node = graph.add_op(layer.name, layer.type, layer, node_role)
 
         if node_role == 'Modifier':
+            if layer.bottom[0] not in modifiers:
+                modifiers[layer.bottom[0]] = []
+            modifiers[layer.bottom[0]].append(new_node)
+            '''
             modifiers.append({ 'blob': layer.bottom[0],
                                'src': layer.bottom[0],
                                'modifier': new_node })
+            '''
             '''
             blob = graph.find_blob_by_name(layer.bottom[0])
             replicated_blob = copy.deepcopy(blob)
@@ -99,31 +104,23 @@ def parse_caffe_net(caffe_net):
             # Add producer edges
             edge = graph.add_edge(src=new_node, dst=new_blob)
 
-    for mod in modifiers:
-        blob = graph.find_blob_by_name(mod['blob'])
-        src = graph.find_op_by_name(mod['src'])
+    ''' Below is some ugly code to handle Caffe's modifier layers (e.g. ReLU, Dropout).
+    This code "normailizes" these nodes by "flattening" them.
+    '''
+    for modified_node in modifiers:
+        src = graph.find_op_by_name(modified_node)
 
-        replicated_blob = graph.find_blob_by_name(blob.name + '_replica')
-        if replicated_blob is None:
-            replicated_blob = copy.deepcopy(blob)
-            replicated_blob.name += '_replica'
+        # now inject the modifier
+        for modifier in modifiers[modified_node]:
+            outgoing_edges = graph.find_outgoing_edges(src)
+            assert len(outgoing_edges) == 1
+            assert type(outgoing_edges[0].dst)==BLOB
+            replicated_blob = copy.deepcopy(outgoing_edges[0].dst)
+            replicated_blob.name += '_copy'
             graph.add_blob2(replicated_blob)
             graph.add_edge(src=src, dst=replicated_blob)
+            graph.add_edge(src=replicated_blob, dst=modifier)
+            graph.add_edge(src=modifier, dst=outgoing_edges[0].dst)
+            graph.del_edge(outgoing_edges[0])
 
-        #if graph.find_blob_by_name(replicated_blob.name) is not None:
-
-
-        graph.add_edge(src=replicated_blob, dst=mod['modifier'])
-        graph.add_edge(src=mod['modifier'], dst=blob)
-        edge_to_remove = graph.find_edge(src, blob)
-        graph.del_edge(edge_to_remove)
-
-
-    # Add fake output edges
-    '''
-    output_blobs = graph.find_output_blobs()
-    for blob_name in output_blobs:
-        blob = graph.find_blob_by_name(blob_name)
-        graph.add_edge(src=blob.producer, dst=None, blob=blob)
-    '''
     return graph

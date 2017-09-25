@@ -12,19 +12,21 @@ with the total size of a node's IFMs.
 def __get_ifm_size(node, tplgy):
     edges = tplgy.find_incoming_edges(node)
     if node.type in ['Convolution', 'Convolution_ReLU', 'Pooling', 'LRN', 'Softmax']:
-        assert (len(edges) == 1)
-        ifm = edges[0].blob
+        assert len(edges) == 1
+        ifm = edges[0].src #edges[0].blob
+        assert type(ifm)==BLOB
         return ifm.size()
     elif node.type in ['Eltwise']:
         # Eltwise has two inputs of equal dimensions
-        assert (len(edges) == 2)
-        ifm = edges[0].blob
+        assert len(edges) == 2
+        ifm = edges[0].src #edges[0].blob
+        assert type(ifm)==BLOB
         return ifm.size() * 2
     elif node.type in ['InnerProduct', 'InnerProduct_ReLU']:
-        if len(edges) != 1:
-            print("node %s (%s) has an unexpected number of edges (%d edges)" % (node.name, node.get_type(), len(edges)))
-        assert (len(edges) == 1)
-        ifm_shape = edges[0].blob.shape
+        assert len(edges) == 1
+        ifm = edges[0].src
+        assert type(ifm)==BLOB
+        ifm_shape = ifm.shape #edges[0].blob.shape
         return (ifm_shape[1] * ifm_shape[2] * ifm_shape[3])
     else:
         return 0
@@ -32,13 +34,13 @@ def __get_ifm_size(node, tplgy):
 def __get_weight_size(node, tplgy):
     edges = tplgy.find_incoming_edges(node)
     if node.type in ['Convolution', 'Convolution_ReLU']:
-        assert (len(edges) == 1)
-        num_ifms = edges[0].blob.shape[1]
+        assert len(edges) == 1
+        num_ifms = edges[0].src.shape[1] #edges[0].blob.shape[1]
         if node.type == 'Convolution_ReLU':
             node = node.node1
         return node.kernel_size * node.kernel_size * node.num_output * num_ifms
     elif node.type in ['InnerProduct', 'InnerProduct_ReLU']:
-        assert (len(edges) == 1)
+        assert len(edges) == 1
         ifm_size = node.get_attr('ifm_size')
         if node.type == 'InnerProduct_ReLU':
             #return (self.get_ifm_size(node, tplgy) * node.node1.num_output)
@@ -59,8 +61,10 @@ def __get_bias_size(node):
 
 def __get_ofm_size(edge):
     ofm_size = 0
-    if edge.blob.shape and edge.src_node.role != "Modifier":
-        ofm_size = edge.blob.size()
+    #if edge.blob.shape and edge.src_node.role != "Modifier":
+    #    ofm_size = edge.blob.size()
+    if edge.src.shape: #and edge.src_node.role != "Modifier":
+        ofm_size = edge.src.size()
     return ofm_size
 
 
