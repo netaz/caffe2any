@@ -62,13 +62,13 @@ def __prune_edges(tplgy):
 """
 
 def test_bfs(tplgy):
-    tplgy.traverse(lambda node: print(node))
+    #tplgy.traverse(lambda node: print(node))
+    tplgy.traverse(None, lambda edge: print(edge))
 
 
 def apply_transforms(prefs, tplgy):
     ''' Handle optional transform processing on the topology
     '''
-
     if prefs['remove_dropout']:
         tplgy.remove_op_by_type('Dropout')
         #__prune_edges(tplgy)
@@ -79,21 +79,22 @@ def apply_transforms(prefs, tplgy):
     if prefs['merge_ip_relu']:
         tplgy.merge_ops('InnerProduct', 'ReLU')
 
+    if prefs['merge_sum_relu']:
+        tplgy.merge_ops('Eltwise', 'ReLU')
 
-    #if prefs['merge_conv_relu_pooling']:
-    #    tplgy.merge_ops('Convolution_ReLU', 'Pooling')
-
-    #if prefs['fold_batchnorm']:
-    #    fold_transforms.fold_pair(tplgy, 'Convolution', 'BatchNorm')
-
-    #fold_transforms.concat_removal(tplgy)
-    return
+    if prefs['merge_conv_relu_pooling']:
+        tplgy.merge_ops('Convolution_ReLU', 'Pooling')
 
     if prefs['fold_scale']:
         fold_transforms.fold_pair(tplgy, 'Convolution', 'Scale')
+        fold_transforms.fold_pair(tplgy, 'Convolution_ReLU', 'Scale')
 
-    if prefs['merge_sum_relu']:
-        tplgy.merge_nodes('Eltwise', 'ReLU')
+    if prefs['fold_batchnorm']:
+        fold_transforms.fold_pair(tplgy, 'Convolution', 'BatchNorm')
+        fold_transforms.fold_pair(tplgy, 'Convolution_ReLU', 'BatchNorm')
+    #fold_transforms.concat_removal(tplgy)
+
+    return
     #decorator_transforms.horizontal_fusion(tplgy)
 
 
@@ -130,7 +131,7 @@ def main():
 
     #test_bfs(tplgy)
     # calculate BLOBs sizes
-    #update_blobs_sizes(tplgy)
+    update_blobs_sizes(tplgy)
 
     for printer_str in args.printer.split(','):
         if printer_str == 'console':

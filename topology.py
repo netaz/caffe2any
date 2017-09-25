@@ -381,10 +381,9 @@ class Topology:
         # Finally, delete the node and change its name (for debug)
         del self.__ops[op.name]
         op.name = op.name + "[DELETED]"
-    '''
-    def remove_nodes(self, nodes):
-        [self.remove_node(node) for node in nodes]
-    '''
+
+    def remove_ops(self, ops):
+        [self.remove_op(op) for op in ops]
 
     # The difference between del_op and remove_op?
     # remove_node will del_node and also reconnect the edge around
@@ -429,9 +428,9 @@ class Topology:
                 done = False
 
     def add_blob(self, name, shape, producer):
-        #new_blob = BLOB(name, shape, producer)
-        new_blob = BLOB("b_"+name, shape, producer)
-        #assert name not in self.__blobs, 'BLOB ' + name + ' already exists'
+        new_blob = BLOB(name, shape, producer)
+        #new_blob = BLOB("b_"+name, shape, producer)
+        assert name not in self.__blobs, 'BLOB ' + name + ' already exists'
         #self.__blobs[new_blob.name] = new_blob
         self.__blobs[name] = new_blob
         log().debug('created:' + str(new_blob))
@@ -441,6 +440,7 @@ class Topology:
 
     def add_blob2(self, new_blob):
         assert type(new_blob)==BLOB
+        #new_blob.name = "b_" + new_blob.name
         assert new_blob.name not in self.__blobs, "{} already a BLOB".format(new_blob.name)
         self.__blobs[new_blob.name] = new_blob
         log().debug('created:' + str(new_blob))
@@ -490,7 +490,10 @@ class Topology:
     def find_outgoing_edges(self, node):
         edges = []
         for edge in self.__edges:
-            if (edge.is_deleted is False) and (edge.src != None) and (edge.src.name == node.name):
+            if ((edge.is_deleted is False) and
+               (edge.src != None) and
+               (edge.src.name == node.name) and
+               type(edge.src) == type(node)):
                 edges.append(edge)
         return edges
 
@@ -556,6 +559,7 @@ class Topology:
     def merge_ops(self, op1_type, op2_type):
         ''' Merge two Ops together
         '''
+        log().debug('[merge_ops] looking for nodes: {} ==> Tensor ==> {}'.format(op1_type, op2_type))
         found = self.find_type_pattern(op1_type, 'Tensor', op2_type)
         for (node1, node2, node3) in found:
             new_node = PairNode(copy.deepcopy(node1), copy.deepcopy(node3))
@@ -566,14 +570,14 @@ class Topology:
             for node3_out_edge in node3_outgoing_edges:
                 self.add_edge(new_node, node3_out_edge.dst)
 
-            #self.dump_blobs(), print(node1.name, node2.name)
             assert node2.name in self.__blobs,  node2.name + ' not found'
 
-            log().debug('[merge_nodes] deleting nodes: {}, {}, {}'.format(node1, node2, node3))
+            log().debug('[merge_ops] deleting nodes: {}, {}, {}'.format(node1, node2, node3))
             self.del_nodes([node1, node2, node3])
             self.add_ops([new_node])
         if len(found)==0:
             log().debug('[merge_ops] didn`t find candidates for types {}, {}'.format(op1_type, op2_type))
+            #print('[merge_ops] didn`t find candidates for types {}, {}'.format(op1_type, op2_type))
 
     '''
     def traverse_blobs(self, blob_cb):

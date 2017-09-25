@@ -2,7 +2,7 @@ transforms:
     # Merges Convolution and ReLU nodes. This makes for a more compact and readable graph.
     'merge_conv_relu': True
     # Merges Convolution, ReLU, and Pooling nodes.
-    'merge_conv_relu_pooling': False
+    'merge_conv_relu_pooling': True
     # Merges InnerProduct and ReLU nodes. This makes for a more compact and readable graph.
     'merge_ip_relu': True
     # For Test/Inference networks, Dropout nodes are not interesting and can be removed for readability
@@ -15,7 +15,7 @@ transforms:
     # Fold the scale layer into the convolution weights
     # TODO: change the implementation so that BN is removed only if we recognize the CONV + Scale pattern
     'fold_scale': True
-    'merge_sum_relu': False
+    'merge_sum_relu': True
 
 png:
     # Choose PNG preferences

@@ -22,10 +22,10 @@ def parse_caffe_net(caffe_net):
     # Input BLOBs
     for i in range(len(caffe_net.input)):
         if len(caffe_net.input_shape) > 0:
-            graph.add_blob(caffe_net.input[i], caffe_net.input_shape[i].dim, None)
+            graph.add_blob("b_"+caffe_net.input[i], caffe_net.input_shape[i].dim, None)
         elif len(caffe_net.input_dim) > 0:
             # graph.add_blob(caffe_net.input[i], caffe_net.input_dim[i], None)
-            graph.add_blob(caffe_net.input[i], caffe_net.input_dim, None)
+            graph.add_blob("b_"+caffe_net.input[i], caffe_net.input_dim, None)
 
     if len(caffe_net.layer) < 1:
         exit("Something went wrong - the parser can't find any layers in the network")
@@ -47,8 +47,6 @@ def parse_caffe_net(caffe_net):
                 included = included or layer_phase.phase == phase
             for layer_phase in layer.exclude:
                 included = included and not layer_phase.phase == phase
-            #if layer.type == 'Input':
-            #    included = False
             if not included:
                 continue
 
@@ -59,7 +57,7 @@ def parse_caffe_net(caffe_net):
             node_role = 'Modifier'
 
         if layer.type == "Input":
-            graph.add_blob(layer.name, layer.input_param.shape[0].dim, producer=None)
+            graph.add_blob("b_"+layer.name, layer.input_param.shape[0].dim, producer=None)
             continue
         else:
             new_node = graph.add_op(layer.name, layer.type, layer, node_role)
@@ -68,28 +66,13 @@ def parse_caffe_net(caffe_net):
             if layer.bottom[0] not in modifiers:
                 modifiers[layer.bottom[0]] = []
             modifiers[layer.bottom[0]].append(new_node)
-            '''
-            modifiers.append({ 'blob': layer.bottom[0],
-                               'src': layer.bottom[0],
-                               'modifier': new_node })
-            '''
-            '''
-            blob = graph.find_blob_by_name(layer.bottom[0])
-            replicated_blob = copy.deepcopy(blob)
-            replicated_blob.name += '2'
-            src = graph.find_node_by_name(layer.bottom[0])
-            graph.add_edge(src=src, dst=replicated_blob)
-            graph.add_edge(src=replicated_blob, dst=new_node)
-            graph.add_edge(src=new_node, dst=blob)
-            edge_to_remove = graph.find_edge(src, blob)
-            graph.del_edge(edge_to_remove)
-            '''
             continue
 
         # Iterate over BLOBs consumed by this layer and create edges to them
         for caffe_bottom_blob in layer.bottom:
-            #blob = graph.find_blob_by_name('b_' + caffe_bottom_blob)
-            blob = graph.find_blob_by_name(caffe_bottom_blob)
+            # Because the Caffe Tensors and Layers have the same name, I add a b_ prefix to
+            # BLOB names, to make them distinguishable
+            blob = graph.find_blob_by_name("b_"+caffe_bottom_blob)
             if blob == None:
                 raise ValueError(layer.name + ' - could not find BLOB:' + caffe_bottom_blob)
             edge = graph.add_edge(src=blob, dst=new_node)
@@ -97,9 +80,9 @@ def parse_caffe_net(caffe_net):
         # Add the BLOBs produced by this layer to the topology
         for caffe_top_blob in layer.top:
             if new_node==None: #.type == "Input":
-                new_blob = graph.add_blob(caffe_top_blob, layer.input_param.shape[0].dim, producer=None)#producer=new_node)
+                new_blob = graph.add_blob("b_"+caffe_top_blob, layer.input_param.shape[0].dim, producer=None)#producer=new_node)
             else:
-                new_blob = graph.add_blob(caffe_top_blob, None, producer=new_node)
+                new_blob = graph.add_blob("b_"+caffe_top_blob, None, producer=new_node)
 
             # Add producer edges
             edge = graph.add_edge(src=new_node, dst=new_blob)

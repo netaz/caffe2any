@@ -3,11 +3,12 @@ def fold_pair(tplgy, op1_type, op2_type):
     and for all matched subgraphs, it removes op2.
     We call this "folding".
     """
-    subgraph = tplgy.find_type_pattern(op1_type, 'Tensor', op2_type)
-    if len(subgraph) > 0:
-        assert False, 'this is broken'
-        bn_nodes = [pair[1] for pair in pairs]
-        tplgy.remove_nodes(bn_nodes)
+    subgraphs = tplgy.find_type_pattern(op1_type, 'Tensor', op2_type)
+    if len(subgraphs)>0:
+        op2_list = [subgraph[2] for subgraph in subgraphs]
+        tplgy.remove_ops(op2_list)
+    #else:
+    #    print("fold_pair: Did not find {}==>Tensor==>{}".format(op1_type, op2_type))
 
 def __concat_removal(node, nodes):
     if node.type == "Concat":

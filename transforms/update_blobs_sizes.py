@@ -16,6 +16,7 @@ def log():
 def __update_blobs_sizes(tplgy, node):
     if type(node) == topology.BLOB:
         return True
+
     log().debug('updating blob size of node:' + node.name)
     in_edges = tplgy.find_incoming_edges(node)
     out_edges = tplgy.find_outgoing_edges(node)
@@ -58,7 +59,7 @@ def __update_blobs_sizes(tplgy, node):
         for out_edge in out_edges:
             out_edge.dst.shape = copy.deepcopy(in_edge.src.shape)
             out_edge.dst.shape[1] = ch_dim_size
-            log().debug('shape of {} is now {}'.format(str(out_edge.src), str(out_edge.src.shape)))
+            log().debug('shape of {} is now {}'.format(str(out_edge.dst), str(out_edge.dst.shape)))
     elif node.type == 'Deconvolution':
         assert len(in_edges) == 1 and len(out_edges) == 1, (node.name, len(in_edges), len(out_edges), str(out_edges[0]))
         if in_edges[0].src.shape != None:
