@@ -1,4 +1,3 @@
-# TODO: Remove node_role
 from topology import Topology, BLOB
 import copy
 import logging
@@ -50,19 +49,16 @@ def parse_caffe_net(caffe_net):
             if not included:
                 continue
 
-        node_role = 'Producer'
-        if (len(layer.bottom) == 1 and len(layer.top) == 1 and
-                    layer.bottom[0] == layer.top[0]):
-            # We have an in-place neuron layer.
-            node_role = 'Modifier'
-
         if layer.type == "Input":
             graph.add_blob("b_"+layer.name, layer.input_param.shape[0].dim, producer=None)
             continue
         else:
-            new_node = graph.add_op(layer.name, layer.type, layer, node_role)
+            new_node = graph.add_op(layer.name, layer.type, layer)
 
-        if node_role == 'Modifier':
+        if (len(layer.bottom) == 1 and
+            len(layer.top) == 1 and
+            layer.bottom[0] == layer.top[0]):
+            # We have an in-place neuron layer.
             if layer.bottom[0] not in modifiers:
                 modifiers[layer.bottom[0]] = []
             modifiers[layer.bottom[0]].append(new_node)

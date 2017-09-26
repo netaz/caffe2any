@@ -20,10 +20,9 @@ def log():
     return logger
 
 class Op:
-    def __init__(self, name, type, role):
+    def __init__(self, name, type):
         self.name = name
         self.type = type
-        self.role = role
         self.attributes = {}
 
     def __str__(self):
@@ -51,7 +50,7 @@ class Op:
 
 class PoolingNode(Op):
     def __init__(self, name, type, layer):
-        Op.__init__(self, name, type, 'Producer')
+        Op.__init__(self, name, type)
         param = layer.pooling_param
         self.kernel_size = param.kernel_size
         self.stride = param.stride
@@ -82,7 +81,7 @@ class PoolingNode(Op):
 
 class ConvolutionNode(Op):
     def __init__(self, name, type, layer):
-        Op.__init__(self, name, type, 'Producer')
+        Op.__init__(self, name, type)
         param = layer.convolution_param
         self.kernel_size = param.kernel_size
         self.stride = param.stride
@@ -123,7 +122,7 @@ class PairNode(Op):
         name = node1.name + "  ++  " + node2.name
         type = node1.type + '_' + node2.type
         #type = new_type if new_type is not None else node1.type + '_' + node2.type
-        Op.__init__(self, name, type, node1.role)
+        Op.__init__(self, name, type)
 
     def transform_ifm(self, ifm_shape):
         return self.node1.transform_ifm(ifm_shape)
@@ -133,7 +132,7 @@ class PairNode(Op):
 
 class DeconvolutionNode(Op):
     def __init__(self, name, type, layer):
-        Op.__init__(self, name, type, 'Producer')
+        Op.__init__(self, name, type)
         param = layer.convolution_param
         self.kernel_size = param.kernel_size
         self.stride = param.stride
@@ -161,7 +160,7 @@ class DeconvolutionNode(Op):
 
 class InnerProductNode(Op):
     def __init__(self, name, type, layer):
-        Op.__init__(self, name, type, 'Producer')
+        Op.__init__(self, name, type)
         self.num_output = layer.inner_product_param.num_output
 
     def transform_ifm(self, ifm_shape):
@@ -174,7 +173,7 @@ class InnerProductNode(Op):
 
 class LRNNode(Op):
     def __init__(self, name, type, layer):
-        Op.__init__(self, name, type, 'Producer')
+        Op.__init__(self, name, type)
         param = layer.lrn_param
         self.norm_region = layer.lrn_param.norm_region
         self.local_size = layer.lrn_param.local_size
@@ -189,7 +188,7 @@ class LRNNode(Op):
 
 class ReshapeNode(Op):
     def __init__(self, name, type, layer):
-        Op.__init__(self, name, type, 'Modifier')
+        Op.__init__(self, name, type)
         param = layer.reshape_param
         self.reshape_param = param.shape
 
@@ -222,14 +221,14 @@ class ReshapeNode(Op):
 
 class EltwiseNode(Op):
     def __init__(self, name, type, layer):
-        Op.__init__(self, name, type, 'Producer')
+        Op.__init__(self, name, type)
         self.operation = layer.eltwise_param.operation
 
 class ConcatNode(Op):
     def __init__(self, name, type, layer):
-        Op.__init__(self, name, type, 'Modifier')
+        Op.__init__(self, name, type)
 
-def op_factory(name, type, layer, role):
+def op_factory(name, type, layer):
     if type == "Pooling":
         new_node = PoolingNode(name, type, layer)
     elif type == "Convolution":
@@ -247,7 +246,7 @@ def op_factory(name, type, layer, role):
     elif type == "Concat":
         new_node = ConcatNode(name, type, layer)
     else:
-        new_node = Op(name, type, role)
+        new_node = Op(name, type)
     return new_node
 
 
@@ -353,8 +352,8 @@ class Topology:
         log().debug('created Op:' + new_op.name)
         return new_op
 
-    def add_op(self, name, type, layer, role):
-        new_op = op_factory(name, type, layer, role)
+    def add_op(self, name, type, layer):
+        new_op = op_factory(name, type, layer)
         return self.add_op2(new_op)
 
     def add_ops(self, ops_to_add):
