@@ -41,6 +41,11 @@ class CsvPrinter:
         op_lookup = get_eltwise_op_dict()
         return 'Eltwise,' + op_lookup[node.operation]
 
+    def print_eltwise_relu(selfself, merged_node):
+        node = merged_node.node1
+        op_lookup = get_eltwise_op_dict()
+        return 'Eltwise/ReLU,' + op_lookup[node.operation]
+
     def print_unknown(self, node):
         return str(node.type) + ','
 
@@ -53,12 +58,14 @@ class CsvPrinter:
             "Deconvolution": self.print_deconv,
             "LRN": self.print_lrn,
             "Eltwise": self.print_eltwise,
+            "Eltwise_ReLU": self.print_eltwise_relu,
         }.get(node.type, self.print_unknown)
         return print_fn(node)
 
     def print_ifms(self, node, tplgy):
         edges = tplgy.find_incoming_edges(node)
-        if node.type in ['Convolution', 'Convolution_ReLU', 'InnerProduct', 'InnerProduct_ReLU', 'Pooling', 'Deconvolution', 'Eltwise', 'LRN', 'Softmax']:
+        if node.type in ['Convolution', 'Convolution_ReLU', 'InnerProduct', 'InnerProduct_ReLU',
+                         'Pooling', 'Deconvolution', 'LRN', 'Softmax']:
             assert len(edges)==1
             assert type(edges[0].src)==topology.BLOB
             ifm_shape = edges[0].src.shape
@@ -66,17 +73,23 @@ class CsvPrinter:
                 #print("node " + node.name + " has no ifm_shape")
                 return ',,'
             return str(ifm_shape[1]) + ',' + str(ifm_shape[2]) + ',' + str(ifm_shape[3])
+        elif node.type in ['Eltwise', 'Eltwise_ReLU']:
+            assert len(edges)==2
+            for edge in edges:
+                assert type(edge.src)==topology.BLOB
+            ifm_shape = edges[0].src.shape
+            return str(ifm_shape[1]) + ',' + str(ifm_shape[2]) + ',' + str(ifm_shape[3])
         else:
             return ',,'
 
     def print_ofms(self, node, tplgy):
         edges = tplgy.find_outgoing_edges(node)
-        if node.type in ['Convolution', 'Convolution_ReLU', 'InnerProduct', 'InnerProduct_ReLU', 'Pooling', 'Deconvolution', 'Eltwise', 'LRN', 'Softmax']:
+        if node.type in ['Convolution', 'Convolution_ReLU', 'InnerProduct', 'InnerProduct_ReLU',
+                         'Pooling', 'Deconvolution', 'Eltwise', 'Eltwise_ReLU', 'LRN', 'Softmax']:
             assert len(edges)==1
             assert type(edges[0].dst)==topology.BLOB
             ofm_shape = edges[0].dst.shape
             if ofm_shape is None:
-                #print("node " + node.name + " has no ifm_shape")
                 return ',,'
             return str(ofm_shape[1]) + ',' + str(ofm_shape[2]) + ',' + str(ofm_shape[3])
         else:

@@ -21,7 +21,7 @@ def __get_ifm_size(node, tplgy):
         ifm = edges[0].src #edges[0].blob
         assert type(ifm)==topology.BLOB
         return ifm.size()
-    elif node.type in ['Eltwise']:
+    elif node.type in ['Eltwise', 'Eltwise_ReLU']:
         # Eltwise has two inputs of equal dimensions
         assert len(edges) == 2
         ifm = edges[0].src
@@ -120,6 +120,8 @@ def __get_MACs(node, ofms_shape, tplgy):
         return node.get_MACs(ofms_shape, num_ifms)
     elif node.type in ['InnerProduct', 'InnerProduct_ReLU']:
         return __get_weight_size(node, tplgy)
+    elif node.type in ['Eltwise', 'Eltwise_ReLU']:
+        return __get_ofm_size(node, tplgy)
     else:
         return node.get_MACs()
 
@@ -134,7 +136,7 @@ def __add_macs_annotations(node, tplgy):
     bw += node.get_attr('ifm_size') if node.get_attr('ifm_size') is not None else 0
     bw += node.get_attr('ofm_size') if node.get_attr('ofm_size') is not None else 0
     node.set_attr('bw', bw)
-    node.set_attr('macs/bw', macs/bw if bw>0 else 0)
+    node.set_attr('macs/bw', "{0:.2f}".format(macs/bw) if bw>0 else 0)
 
     # I'd like to add for Convolutions:
     # (OFM_H * OFM_W) / (K*K)
