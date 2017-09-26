@@ -97,19 +97,22 @@ def apply_transforms(prefs, tplgy):
     return
     #decorator_transforms.horizontal_fusion(tplgy)
 
-
+import os
 import logging.config
-logging.config.fileConfig('logging.conf')
+
 
 def main():
     print("caffe2any v0.5")
-    logger = logging.getLogger('topology')
-
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--printer', help='output printer (csv, console, png)', default='console')
     parser.add_argument('-d', '--display', type=str, help='display inventory,unique,output,bfs,mem')
+    parser.add_argument('-w', '--workdir', type=str, help='set the working directory', default='.')
     parser.add_argument('infile', help='input prototxt file')
     args = parser.parse_args()
+
+    os.chdir(args.workdir)
+    logging.config.fileConfig('logging.conf')
+    logger = logging.getLogger('topology')
 
     net = caffe.NetParameter()
 
