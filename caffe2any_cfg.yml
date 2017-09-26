@@ -2,7 +2,7 @@ transforms:
     # Merges Convolution and ReLU nodes. This makes for a more compact and readable graph.
     'merge_conv_relu': True
     # Merges Convolution, ReLU, and Pooling nodes.
-    'merge_conv_relu_pooling': True
+    'merge_conv_relu_pooling': False
     # Merges InnerProduct and ReLU nodes. This makes for a more compact and readable graph.
     'merge_ip_relu': True
     # For Test/Inference networks, Dropout nodes are not interesting and can be removed for readability

@@ -1,3 +1,4 @@
+import topology
 from .globals import *
 pooling_type = get_pooling_types_dict()
 from transforms import decorator_transforms
@@ -7,7 +8,7 @@ class CsvPrinter:
 
     def __init__(self, fname):
         self.file = open(fname, "wt")
-        self.done_blobs = []
+        self.done_nodes = []
         # TODO - READ THIS FROM CONFIGURATION
         self.cols = ['Node', 'Type', 'Node Details', 'IFMz', 'IFMy', 'IFMx', 'OFMz', 'OFMy', 'OFMx',
                      'IFM Volume (elems)', 'OFM Volume (elems)', 'Weights Volume (elems)', 'Bias Volume (elems)', 'BW', 'MACs', 'MACs/element']
@@ -58,7 +59,9 @@ class CsvPrinter:
     def print_ifms(self, node, tplgy):
         edges = tplgy.find_incoming_edges(node)
         if node.type in ['Convolution', 'Convolution_ReLU', 'InnerProduct', 'InnerProduct_ReLU', 'Pooling', 'Deconvolution', 'Eltwise', 'LRN', 'Softmax']:
-            ifm_shape = edges[0].blob.shape
+            assert len(edges)==1
+            assert type(edges[0].src)==topology.BLOB
+            ifm_shape = edges[0].src.shape
             if ifm_shape is None:
                 #print("node " + node.name + " has no ifm_shape")
                 return ',,'
@@ -66,6 +69,18 @@ class CsvPrinter:
         else:
             return ',,'
 
+    def print_ofms(self, node, tplgy):
+        edges = tplgy.find_outgoing_edges(node)
+        if node.type in ['Convolution', 'Convolution_ReLU', 'InnerProduct', 'InnerProduct_ReLU', 'Pooling', 'Deconvolution', 'Eltwise', 'LRN', 'Softmax']:
+            assert len(edges)==1
+            assert type(edges[0].dst)==topology.BLOB
+            ofm_shape = edges[0].dst.shape
+            if ofm_shape is None:
+                #print("node " + node.name + " has no ifm_shape")
+                return ',,'
+            return str(ofm_shape[1]) + ',' + str(ofm_shape[2]) + ',' + str(ofm_shape[3])
+        else:
+            return ',,'
 
     def get_MACs_to_BW(self, node, ofms_descriptor, tplgy):
         pass
@@ -93,27 +108,30 @@ class CsvPrinter:
 
         self.file.write(', '.join(self.cols))
         self.file.write('\n')
-        tplgy.traverse(None, lambda edge: self.print_edge_cb(edge, tplgy))
+        tplgy.traverse(lambda node: self.print_node_cb(node, tplgy))
         print('cvs printer: done with %s' % self.file.name)
 
-    def get_col_handlers(self, edge, tplgy):
+    def get_col_handlers(self, node, tplgy):
         col_handlers = {
-            'Node': (edge.src_node.name if edge.src_node else ''),
-            'Type': (str(self.print_node(edge.src_node)) if edge.src_node else ','),
+            'Node': (node.name if node else ''),
+            'Type': (str(self.print_node(node)) if node else ','),
             'Node Details': '#',
-            'IFMz': self.print_ifms(edge.src_node, tplgy),
+            'IFMz': self.print_ifms(node, tplgy),
             'IFMy': '#',
             'IFMx': '#',
-            'OFMz': (str(edge.blob.shape[1]) if edge.blob.shape else ''),  # OFMz
-            'OFMy': (str(edge.blob.shape[2]) if edge.blob.shape else ''),  # OFMy
-            'OFMx': (str(edge.blob.shape[3]) if edge.blob.shape else ''),  # OFMx
-            'IFM Volume (elems)':str(edge.src_node.get_attr('ifm_size')),
-            'OFM Volume (elems)': str(edge.src_node.get_attr('ofm_size')),
-            'Weights Volume (elems)': str(edge.src_node.get_attr('weights_size')),
-            'Bias Volume (elems)': str(edge.src_node.get_attr('bias_size')),
-            'BW': str(edge.src_node.get_attr('bw')),
-            'MACs': str(edge.src_node.get_attr('macs')),
-            'MACs/element': str(edge.src_node.get_attr('macs/bw'))
+            'OFMz': self.print_ofms(node, tplgy),
+            'OFMy': '#',
+            'OFMx': '#',
+            #'OFMz': (str(edge.blob.shape[1]) if edge.blob.shape else ''),  # OFMz
+            #'OFMy': (str(edge.blob.shape[2]) if edge.blob.shape else ''),  # OFMy
+            #'OFMx': (str(edge.blob.shape[3]) if edge.blob.shape else ''),  # OFMx
+            'IFM Volume (elems)':str(node.get_attr('ifm_size')),
+            'OFM Volume (elems)': str(node.get_attr('ofm_size')),
+            'Weights Volume (elems)': str(node.get_attr('weights_size')),
+            'Bias Volume (elems)': str(node.get_attr('bias_size')),
+            'BW': str(node.get_attr('bw')),
+            'MACs': str(node.get_attr('macs')),
+            'MACs/element': str(node.get_attr('macs/bw'))
         }
         return col_handlers
 
@@ -123,20 +141,20 @@ class CsvPrinter:
                 self.file.write(col_handlers[col] + ',' )
         self.file.write('\n');
 
-    def print_edge_cb(self, edge, tplgy):
+    def print_node_cb(self, node, tplgy):
         # If we've printed the contribution of this BLOB, then we skip it.
         # This will naturally filter out ReLU nodes, because they share their
         # BLOB with either Convolution or InnerProduct
-        if edge.blob in self.done_blobs:
+        if (node in self.done_nodes) or type(node)==topology.BLOB:
             #print("skipping BLOB: %s from edge %s" % (edge.blob, str(edge)))
             return
         # We don't want to see 'modifier' nodes (e.g. Concat) it in the CSV, since
         # they contribute no data transfer information
-        if edge.src_node.role == 'Modifier':
-            return
-        self.done_blobs.append(edge.blob)
+        #if edge.src_node.role == 'Modifier':
+        #    return
+        self.done_nodes.append(node)
 
-        col_handlers = self.get_col_handlers(edge, tplgy)
+        col_handlers = self.get_col_handlers(node, tplgy)
         """
         Add your own handler
         """

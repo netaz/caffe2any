@@ -132,6 +132,7 @@ def main():
     #test_bfs(tplgy)
     # calculate BLOBs sizes
     update_blobs_sizes(tplgy)
+    #decorator_transforms.add_size_annotations(tplgy)
 
     for printer_str in args.printer.split(','):
         if printer_str == 'console':

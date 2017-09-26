@@ -106,11 +106,11 @@ class ConvolutionNode(Op):
         log().debug(str(ifm_shape) + '--> ' + str(ofm_shape))
         return ofm_shape
 
-    def get_MACs(self, ofms_descriptor, num_ifms):
+    def get_MACs(self, ofms_shape, num_ifms):
         # macs = #OFMs*OFM_X*OFM_Y*#IFMs*K_X*K_Y
-        num_ofms = ofms_descriptor[1]
-        ofm_x = ofms_descriptor[2]
-        ofm_y = ofms_descriptor[3]
+        num_ofms = ofms_shape[1]
+        ofm_x = ofms_shape[2]
+        ofm_y = ofms_shape[3]
         MACs = num_ofms * ofm_x * ofm_y * num_ifms * self.kernel_size * self.kernel_size
         return MACs
 
@@ -273,12 +273,15 @@ class BLOB:
             return NotImplemented
         return self.name == other.name
 
-    def size(self):
-        if self.shape is None:
+    @staticmethod
+    def sizeof(shape):
+        if shape is None:
             return 0
         # shape[0] is the batch dimension, so don't count it
-        return self.shape[1] * self.shape[2] * self.shape[3]
+        return shape[1] * shape[2] * shape[3]
 
+    def size(self):
+        return self.sizeof(self.shape)
 
 class Edge:
     '''    def __init__(self, src_node, dst_node, blob):

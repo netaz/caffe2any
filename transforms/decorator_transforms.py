@@ -9,33 +9,41 @@ For example, the ifm_size decorator transformer, annotates nodes
 with the total size of a node's IFMs.
 """
 
+import topology
+
 def __get_ifm_size(node, tplgy):
+    if not issubclass(type(node), topology.Op):
+        return 0
+
     edges = tplgy.find_incoming_edges(node)
     if node.type in ['Convolution', 'Convolution_ReLU', 'Pooling', 'LRN', 'Softmax']:
         assert len(edges) == 1
         ifm = edges[0].src #edges[0].blob
-        assert type(ifm)==BLOB
+        assert type(ifm)==topology.BLOB
         return ifm.size()
     elif node.type in ['Eltwise']:
         # Eltwise has two inputs of equal dimensions
         assert len(edges) == 2
-        ifm = edges[0].src #edges[0].blob
-        assert type(ifm)==BLOB
+        ifm = edges[0].src
+        assert type(ifm)==topology.BLOB
         return ifm.size() * 2
     elif node.type in ['InnerProduct', 'InnerProduct_ReLU']:
         assert len(edges) == 1
         ifm = edges[0].src
-        assert type(ifm)==BLOB
-        ifm_shape = ifm.shape #edges[0].blob.shape
+        assert type(ifm)==topology.BLOB
+        ifm_shape = ifm.shape
         return (ifm_shape[1] * ifm_shape[2] * ifm_shape[3])
     else:
         return 0
 
 def __get_weight_size(node, tplgy):
+    if not issubclass(type(node), topology.Op):
+        return 0
+
     edges = tplgy.find_incoming_edges(node)
     if node.type in ['Convolution', 'Convolution_ReLU']:
         assert len(edges) == 1
-        num_ifms = edges[0].src.shape[1] #edges[0].blob.shape[1]
+        num_ifms = edges[0].src.shape[1]
         if node.type == 'Convolution_ReLU':
             node = node.node1
         return node.kernel_size * node.kernel_size * node.num_output * num_ifms
@@ -59,57 +67,68 @@ def __get_bias_size(node):
     else:
         return 0
 
-def __get_ofm_size(edge):
-    ofm_size = 0
-    #if edge.blob.shape and edge.src_node.role != "Modifier":
-    #    ofm_size = edge.blob.size()
-    if edge.src.shape: #and edge.src_node.role != "Modifier":
-        ofm_size = edge.src.size()
-    return ofm_size
+def __get_ofm_shape(node, tplgy):
+    ofm_shape = None
+    edges = tplgy.find_outgoing_edges(node)
+    if issubclass(type(node), topology.Op) and len(edges)==1:
+        ''' Currently, only handle this simple, but prominent, case of one output edge'''
+        assert type(edges[0].dst)==topology.BLOB
+        ofm_shape = edges[0].dst.shape
+    return ofm_shape
 
+def __get_ofm_size(node, tplgy):
+    ofm_shape = __get_ofm_shape(node, tplgy)
+    if ofm_shape is None:
+        return None
+    return topology.BLOB.sizeof(ofm_shape)
 
-def __add_size_annotations(edge, tplgy, done_blobs):
+def __add_size_annotations(node, tplgy, done_nodes):
     # If we've printed the contribution of this BLOB, then we skip it.
     # This will naturally filter out ReLU nodes, because they share their
     # BLOB with either Convolution or InnerProduct
-    if edge.blob in done_blobs:
+    if node in done_nodes:
         #print("skipping BLOB: %s from edge %s" % (edge.blob, str(edge)))
         return
     # We don't want to see 'modifier' nodes (e.g. Concat) it in the CSV, since
     # they contribute no data transfer information
-    if edge.src_node.role == 'Modifier':
-        return
-    done_blobs.append(edge.blob)
-    edge.src_node.set_attr('ifm_size', __get_ifm_size(edge.src_node, tplgy))
-    edge.src_node.set_attr('weights_size', __get_weight_size(edge.src_node, tplgy))
-    edge.src_node.set_attr('ofm_size', __get_ofm_size(edge))
-    edge.src_node.set_attr('bias_size', __get_bias_size(edge.src_node))
+    #if edge.src_node.role == 'Modifier':
+    #    return
+    done_nodes.append(node)
+    if type(node) is not topology.BLOB:
+        node.set_attr('ifm_size', __get_ifm_size(node, tplgy))
+        node.set_attr('ofm_size', __get_ofm_size(node, tplgy))
+        node.set_attr('weights_size', __get_weight_size(node, tplgy))
+        node.set_attr('bias_size', __get_bias_size(node))
 
 
 def add_size_annotations(tplgy):
     done_blobs = []
-    tplgy.traverse(None, lambda edge: __add_size_annotations(edge, tplgy, done_blobs))
+    tplgy.traverse(lambda node: __add_size_annotations(node, tplgy, done_blobs))
 
 
 # todo: move this to Topology (per Node class)
-def __get_MACs(node, ofms_descriptor, tplgy):
+def __get_MACs(node, ofms_shape, tplgy):
+    if not issubclass(type(node), topology.Op):
+        return 0
+
     if node.type in ['Convolution', 'Convolution_ReLU']:
         edges = tplgy.find_incoming_edges(node)
         assert (len(edges) == 1)
-        num_ifms = edges[0].blob.shape[1]
+        num_ifms = edges[0].src.shape[1]
         if node.type == 'Convolution_ReLU':
             node = node.node1
-        return node.get_MACs(ofms_descriptor, num_ifms)
+        return node.get_MACs(ofms_shape, num_ifms)
     elif node.type in ['InnerProduct', 'InnerProduct_ReLU']:
         return __get_weight_size(node, tplgy)
     else:
-        return node.get_MACs()#(ofms_descriptor, num_ifms)
+        return node.get_MACs()
 
-def __add_macs_annotations(edge, tplgy):
-    macs = __get_MACs(edge.src_node, edge.blob.shape, tplgy)
-    edge.src_node.set_attr('macs',macs)
+def __add_macs_annotations(node, tplgy):
+    if not issubclass(type(node), topology.Op):
+        return
+    macs = __get_MACs(node, __get_ofm_shape(node, tplgy), tplgy)
+    node.set_attr('macs',macs)
 
-    node = edge.src_node
     bw = node.get_attr('weights_size') if node.get_attr('weights_size') is not None else 0
     bw += node.get_attr('bias_size') if node.get_attr('bias_size') is not None else 0
     bw += node.get_attr('ifm_size') if node.get_attr('ifm_size') is not None else 0
@@ -128,7 +147,7 @@ def __add_macs_annotations(edge, tplgy):
 
 def add_macs_annotations(tplgy):
     done_blobs = []
-    tplgy.traverse(None, lambda edge: __add_macs_annotations(edge, tplgy))
+    tplgy.traverse(lambda node: __add_macs_annotations(node, tplgy))
 
 def __filter_edge(edges, edge, blob):
     if (edge.blob == blob and
