@@ -92,9 +92,7 @@ def apply_transforms(prefs, tplgy):
     if prefs['fold_batchnorm']:
         fold_transforms.fold_pair(tplgy, 'Convolution', 'BatchNorm')
         fold_transforms.fold_pair(tplgy, 'Convolution_ReLU', 'BatchNorm')
-    #fold_transforms.concat_removal(tplgy)
 
-    return
     #decorator_transforms.horizontal_fusion(tplgy)
 
 import os
@@ -136,6 +134,8 @@ def main():
     # calculate BLOBs sizes
     update_blobs_sizes(tplgy)
     #decorator_transforms.add_size_annotations(tplgy)
+    # Remove Concat layers only after updating the BLOB sizes
+    fold_transforms.concat_removal(tplgy)
 
     for printer_str in args.printer.split(','):
         if printer_str == 'console':

@@ -54,9 +54,8 @@ png:
             'fillcolor': '#6495ED'
             'style': 'filled'
         'Tensor':
-            'shape': 'point'
-            'fillcolor': '#FF5050'
-            'style': 'filled'
+            'shape': 'none'
+            'style': 'gray'
         'Convolution':
             'shape': 'record'
             'fillcolor': '#FF5050'

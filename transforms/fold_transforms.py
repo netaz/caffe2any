@@ -17,7 +17,10 @@ def __concat_removal(node, nodes):
 def concat_removal(tplgy):
     """ This transform removes Concat layers.
     Incoming edges to the Concat layer all produce into a
-    single tensor.
+    single tensor.  Therefore, the tensors on the incoming edges
+    are called "virtual tensors", or "tensor views".
+    See Torch Tensor view documentation: 
+    http://jucor.github.io/torch-doc-template/tensor.html#toc_28
     """
     concat_nodes = []
     tplgy.traverse(lambda node: __concat_removal(node, concat_nodes))
@@ -27,9 +30,7 @@ def concat_removal(tplgy):
         assert len(incoming_edges)>1 and len(outgoing_edges)==1
         for edge in incoming_edges:
             tplgy.add_edge(edge.src, outgoing_edges[0].dst)
+            edge.src.parent = outgoing_edges[0].dst
             tplgy.del_edge(edge)
-        tplgy.del_op(node)
+        tplgy.del_nodes([node])
         tplgy.del_edge(outgoing_edges[0])
-        #parent_blob = outgoing_edges[0].blob
-        #for edge in incoming_edges:
-        #    edge.blob.parent = parent_blob

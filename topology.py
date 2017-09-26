@@ -255,10 +255,13 @@ class BLOB:
     def __init__(self, name, shape, producer):
         self.name = name
         self.shape = shape
-        self.producer = producer
-         # A BLOB's parent is the physical BLOB to which this BLOB is mapped.
-         # Another way to look at it: if a BLOB has a parent, it is actually a view
-         # into another BLOB and does not occupy an independent physical space
+        ''' A BLOB's parent is the physical (storage) BLOB to which this BLOB is mapped.
+        Another way to look at it: if a BLOB has a parent, then the BLOB is only a view
+        into the parent's storage (and therfore the BLOB and its parent share the same
+        physical storage).
+        See Torch Tensor view documentation:
+        http://jucor.github.io/torch-doc-template/tensor.html#toc_28
+        '''
         self.parent = None
         self.type = 'Tensor'
 
@@ -432,9 +435,7 @@ class Topology:
 
     def add_blob(self, name, shape, producer):
         new_blob = BLOB(name, shape, producer)
-        #new_blob = BLOB("b_"+name, shape, producer)
         assert name not in self.__blobs, 'BLOB ' + name + ' already exists'
-        #self.__blobs[new_blob.name] = new_blob
         self.__blobs[name] = new_blob
         log().debug('created:' + str(new_blob))
         if self.__first_node is None:
@@ -443,7 +444,6 @@ class Topology:
 
     def add_blob2(self, new_blob):
         assert type(new_blob)==BLOB
-        #new_blob.name = "b_" + new_blob.name
         assert new_blob.name not in self.__blobs, "{} already a BLOB".format(new_blob.name)
         self.__blobs[new_blob.name] = new_blob
         log().debug('created:' + str(new_blob))
@@ -451,13 +451,6 @@ class Topology:
             self.__first_node = new_blob
         return new_blob
 
-    '''
-    def add_edge(self, src, dst, blob):
-        new_edge = Edge(src, dst, blob)
-        self.__edges.append(new_edge)
-        log().debug('created edge:' + str(new_edge))
-        return new_edge
-    '''
     def add_edge(self, src, dst):
         new_edge = Edge(src, dst)
         self.__edges.append(new_edge)
@@ -472,7 +465,6 @@ class Topology:
                 return
 
     def get_start_node(self):
-        #return self.__nodes.values()[0]
         log().debug("Start node: " + str(self.__first_node))
         return self.__first_node
 
@@ -524,25 +516,7 @@ class Topology:
             if blob_has_consumer is False:
                 blobs.append(blob)
         return blobs
-    '''
-    def find_subgraph_pair(self, node1_type, node2_type):
-        pairs = []
-        for node_name in self.__nodes:
-            # Search for a matching pair of nodes, by node types
-            node1 = self.__nodes[node_name]
-            if node1.type != node1_type:
-                continue
-            outgoing_edges = self.find_outgoing_edges(node1)
-            #assert len(outgoing_edges) == 1
-            out_edge = outgoing_edges[0]
-            if out_edge.dst is None: ## or out_edge.dst.type != node2_type:
-                continue
 
-            # Found a match
-            node2 = out_edge.dst
-            pairs.append([node1, node2])
-        return pairs
-    '''
     def find_type_pattern(self, node1_type, node2_type, node3_type):
         ''' This is a very specific pattern matcher which looks for nodes
         having the pattern [type1] ==> [type2] ==> [type3]

@@ -22,6 +22,7 @@ def choose_style_by_layertype(layertype, theme):
     except:
         layer_style = theme['layer_default']
 
+    layer_style['fontcolor'] = 'black'
     return layer_style
 
 
@@ -70,7 +71,7 @@ class PngPrinter(object):
     @staticmethod
     def print_tensor(node, separator, format):
         node_label = '%s%s(%s)' % (node.name, separator, node.type)
-        node_label += '\n' + str(node.shape) if node.shape is not None else 'None'
+        node_label += separator + str(node.shape) if node.shape is not None else 'None'
         return node_label
 
     @staticmethod
@@ -124,8 +125,8 @@ class PngPrinter(object):
         elif format == 'custom':
             node_label = node.name + separator + pooling_type[node.pool_type] + ', k=' + str(node.kernel_size) + 'x' + str(
                          node.kernel_size) + '/s=' + str(node.stride) + ' pad=' + str(node.pad)
-            #if node.ceiling:
-            #    node_label += ' ceiling'
+            if node.ceiling:
+                node_label += ' ceiling'
             node_label = '%s%s(%s)' % (node_label, separator, node.type)
         else:
             node_label = None
@@ -180,7 +181,13 @@ class PngPrinter(object):
             separator = '\\n'
 
         node_label = self.get_node_label(node, separator, self.__prefs['node_label'])
-        #print('[png_printer] adding node: ', node.name)
+
+        # Display Tensor views using a different font or shape
+        layer_style['shape'] = 'none'
+        if hasattr(node, 'parent') and node.parent is not None:
+            node_label += separator + 'parent= ' + node.parent.name
+            layer_style['fontcolor'] = 'grey'
+            #layer_style['shape'] = 'point'
         self.pydot_nodes[node.name] = pydot.Node(node_label, **layer_style)
 
     def add_pydot_edge(self, edge, tplgy):
