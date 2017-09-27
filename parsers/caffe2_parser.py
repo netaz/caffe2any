@@ -1,8 +1,8 @@
 #from topology import Topology
 import sys
 from google.protobuf import text_format
-import parsers.protos.caffe2_pb2 as caffe2
-
+#import parsers.protos.caffe2_pb2 as caffe2
+from topology import Topology, BLOB
 import logging
 logger = None
 
@@ -26,9 +26,11 @@ def parse_caffe2_net(caffe2_net):
     # See: https://developers.google.com/protocol-buffers/docs/pythontutorial
     # See: https://github.com/caffe2/caffe2/blob/master/caffe2/python/predictor/mobile_exporter.py
     # See: https://github.com/google/protobuf/blob/master/python/google/protobuf/text_format.py
-    #graph = Topology()
+    graph = Topology()
     for op in caffe2_net.op:
-        print(op.type)
+        print(op.type, op.name)
+        #print(op.name)
+        #new_node = graph.add_op(op.name, op.type, None)
         for arg in op.arg:
             if arg.HasField('name'): print('\t' + arg.name)
 

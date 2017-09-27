@@ -7,6 +7,8 @@ import sys
 import argparse
 from collections import deque, Counter
 import caffe_pb2 as caffe
+#import parsers.protos.caffe_pb2 as caffe
+import parsers.protos.caffe2_pb2 as caffe2
 from google.protobuf import text_format
 from printers import csv, console, png
 from parsers.caffe_parser import parse_caffe_net
@@ -101,17 +103,26 @@ def main():
     logging.config.fileConfig('config/logging.conf')
     logger = logging.getLogger('topology')
 
-    net = caffe.NetParameter()
-
-    # Read a Caffe prototxt file
-    try:
+    EXPERIMENTAL = False
+    if EXPERIMENTAL:
+        # python caffe2any.py examples/caffe2/alexnet_predict_net.pb -p png -d inventory
         f = open(sys.argv[1], "rb")
-        text_format.Parse(f.read(), net)
-        f.close()
-    except IOError:
-        exit("Could not open file " + sys.argv[1])
+        net = caffe2.NetDef()
+        net.ParseFromString(f.read())
+        tplgy = parse_caffe2_net(net)
+        exit()
+    else:
+        net = caffe.NetParameter()
 
-    tplgy = parse_caffe_net(net)
+        # Read a Caffe prototxt file
+        try:
+            f = open(sys.argv[1], "rb")
+            text_format.Parse(f.read(), net)
+            f.close()
+        except IOError:
+            exit("Could not open file " + sys.argv[1])
+
+        tplgy = parse_caffe_net(net)
 
     # read preferences
     with open("config/caffe2any_cfg.yml", 'r') as cfg_file:
