@@ -20,13 +20,19 @@ To parse prototxt files, I'm using Google's protobufs, obviuosly.  Since I was i
 - The included caffe_pb2.py was generated using protoc:
   $ protoc -I=.  --python_out=. ./caffe.proto
 
+Installation and dependencies:
+- See file DEPENDENCIES.md
+
+After cloning the code, you can make sure that everything is correctly installed, by executing the (quite skimpy) test-suite:
+$ py.test tests/tplgy_test.py
+
 Usage:
 
 example(1):<br>
-$ python prototxt2csv.py examples/alexnet.deploy.prototxt  -p console -d mem,unique,inventory,output,bfs
+$ python caffe2any.py examples/alexnet.deploy.prototxt  -p console -d mem,unique,inventory,output,bfs
 
 example(2):<br>
-$ python prototxt2csv.py examples/googlenetv1.deploy.prototxt -p png -d bfs
+$ python caffe2any.py examples/googlenetv1.deploy.prototxt -p png -d bfs
 
 - This generates a PNG file from the network file.  It differs from prototxt2png mainly thru customization, extra edge annotation, and the fact that BLOBs are not treated as nodes.
 - File printers/png.py can be customized to control the generated PNG images.  Change 'options' and 'theme'.
@@ -34,6 +40,3 @@ $ python prototxt2csv.py examples/googlenetv1.deploy.prototxt -p png -d bfs
 prototxt2png: draw the prototxt networks without installing Caffe
 - I plan to retire this file, since I've incorporated its functionality into the main program.
 - This is motivated by the need to generate PNG files without installing Caffe.  It reuses the original Caffe code, with a few changes.
-
-Installation and dependencies:
-- See file DEPENDENCIES.md
