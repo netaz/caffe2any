@@ -29,9 +29,9 @@ def choose_style_by_layertype(layertype, theme):
 class PngPrinter(object):
     """The printer prints to PNG files"""
 
-    def __init__(self, args, png_prefs, net):
-        self.output_image_file = args.infile + '.png'
-        self.output_inventory_file = args.infile + '_inventory.png'
+    def __init__(self, outfile, png_prefs, net):
+        self.output_image_file = outfile + '.png'
+        self.output_inventory_file = outfile + '_inventory.png'
         self.caffe_net = net
         self.pydot_nodes = {}
         self.pydot_edges = []

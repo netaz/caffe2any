@@ -15,6 +15,9 @@ from transforms import reduce_transforms
 import topology
 import yaml
 import logging
+import ntpath
+import os
+import logging.config
 
 ''' This is a crude dynamic load of printer classes.
 In the future, need to make this nicer.
@@ -78,9 +81,12 @@ def apply_transforms(prefs, tplgy):
         fold_transforms.fold_pair(tplgy, 'Convolution_ReLU', 'BatchNorm')
     #decorator_transforms.horizontal_fusion(tplgy)
 
-import os
-import logging.config
-
+def get_outfile(infile):
+    outdir = 'output/'
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+    outfile = outdir + ntpath.basename(infile)
+    return outfile
 
 def main():
     print("caffe2any v0.5")
@@ -120,13 +126,14 @@ def main():
     # Remove Concat layers only after updating the BLOB sizes
     fold_transforms.concat_removal(tplgy)
 
+    outfile = get_outfile(args.infile)
     for printer_str in args.printer.split(','):
         if printer_str == 'console':
             printer = console.ConsolePrinter()
         elif printer_str == 'png':
-            printer = png.PngPrinter(args, prefs['png'], net)
+            printer = png.PngPrinter(outfile, prefs['png'], net)
         elif printer_str == 'csv':
-            printer = csv.CsvPrinter(args.infile + '.csv')
+            printer = csv.CsvPrinter(outfile)
         else:
             printer_ctor = load_printer(printer_str, 'Printer')
             if printer_ctor is not None:

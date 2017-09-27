@@ -6,8 +6,8 @@ from transforms import decorator_transforms
 class CsvPrinter:
     """A CSV file printer"""
 
-    def __init__(self, fname):
-        self.file = open(fname, "wt")
+    def __init__(self, outfile):
+        self.file = open(outfile + '.csv', "wt")
         self.done_nodes = []
         # TODO - READ THIS FROM CONFIGURATION
         self.cols = ['Node', 'Type', 'Node Details', 'IFMz', 'IFMy', 'IFMx', 'OFMz', 'OFMy', 'OFMx',
