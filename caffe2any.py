@@ -51,15 +51,6 @@ from transforms.update_blobs_sizes import update_blobs_sizes
 from transforms import fold_transforms
 from transforms import decorator_transforms
 
-"""
-def __prune_edges(tplgy):
-    ''' Remove unnecessary edges '''
-    pruned_edges = []
-    tplgy.traverse(None, lambda edge: pruned_edges.append(edge if type(edge.src)==type(edge.dst) else None))
-    for edge in pruned_edges:
-        if edge is not None:
-            tplgy.del_edge(edge)
-"""
 
 def test_bfs(tplgy):
     #tplgy.traverse(lambda node: print(node))
@@ -71,28 +62,20 @@ def apply_transforms(prefs, tplgy):
     '''
     if prefs['remove_dropout']:
         tplgy.remove_op_by_type('Dropout')
-        #__prune_edges(tplgy)
-
     if prefs['merge_conv_relu']:
         tplgy.merge_ops('Convolution', 'ReLU')
-
     if prefs['merge_ip_relu']:
         tplgy.merge_ops('InnerProduct', 'ReLU')
-
     if prefs['merge_sum_relu']:
         tplgy.merge_ops('Eltwise', 'ReLU')
-
     if prefs['merge_conv_relu_pooling']:
         tplgy.merge_ops('Convolution_ReLU', 'Pooling')
-
     if prefs['fold_scale']:
         fold_transforms.fold_pair(tplgy, 'Convolution', 'Scale')
         fold_transforms.fold_pair(tplgy, 'Convolution_ReLU', 'Scale')
-
     if prefs['fold_batchnorm']:
         fold_transforms.fold_pair(tplgy, 'Convolution', 'BatchNorm')
         fold_transforms.fold_pair(tplgy, 'Convolution_ReLU', 'BatchNorm')
-
     #decorator_transforms.horizontal_fusion(tplgy)
 
 import os
@@ -109,7 +92,7 @@ def main():
     args = parser.parse_args()
 
     os.chdir(args.workdir)
-    logging.config.fileConfig('logging.conf')
+    logging.config.fileConfig('config/logging.conf')
     logger = logging.getLogger('topology')
 
     net = caffe.NetParameter()
@@ -125,7 +108,7 @@ def main():
     tplgy = parse_caffe_net(net)
 
     # read preferences
-    with open("caffe2any_cfg.yml", 'r') as cfg_file:
+    with open("config/caffe2any_cfg.yml", 'r') as cfg_file:
         prefs = yaml.load(cfg_file)
 
     apply_transforms(prefs['transforms'], tplgy)
