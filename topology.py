@@ -316,10 +316,14 @@ class SubGraph:
     (loosely following: https://www.tensorflow.org/versions/r0.12/api_docs/python/contrib.graph_editor/module_subgraph)
     It has incoming edges, outgoing edges, and a set of nodes.
     '''
-    def __init__(self, nodes=None, in_edges=None, out_edges=None):
+    def __init__(self, nodes=None, in_edges=None, out_edges=None, id=None):
         self.nodes = nodes
         self.in_edges = in_edges
         self.out_edges = out_edges
+        for node in nodes:
+            node.subgraph = id
+        #self.id = id
+        self.name = str(id)
 
 class Topology:
     def __init__(self):

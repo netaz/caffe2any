@@ -146,6 +146,7 @@ def main():
         elif printer_str == 'csv':
             printer = csv.CsvPrinter(outfile)
         else:
+            # dynamically load a printer module
             printer_ctor = load_printer(printer_str, 'Printer')
             if printer_ctor is not None:
                 printer = printer_ctor(args)
